@@ -5,10 +5,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-24.04
-    env:
-      OVERPOSTER_COMPILER: docker
     steps:
       - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends texlive-xetex texlive-latex-extra texlive-pictures texlive-fonts-recommended
       - uses: pnpm/action-setup@v4
         with:
           version: 11.25.0
@@ -20,6 +19,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
+      - run: xelatex --version && xdvipdfmx --version
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
@@ -30,3 +30,7 @@ jobs:
         with:
           name: overposter-example-pdfs
           path: .overposter/builds/*.pdf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: overposter-preflight-reports
+          path: .overposter/builds/*.preflight.json

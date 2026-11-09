@@ -18,6 +18,8 @@ export type Project = {
   name: string;
   config: Config;
   updatedAt: string;
+  imported?: boolean;
+  trusted?: boolean;
 };
 export type Report = {
   valid: boolean;

@@ -17,12 +17,18 @@ import {
   updateProject,
   writeProjectFile,
   dataDir,
+  trustImportedProject,
 } from "./projects.js";
 import { templateIds } from "./model.js";
 import { posterConfigPatchSchema } from "./model.js";
 import { z } from "zod";
+import { createHash } from "node:crypto";
 
+if (process.env.OVERPOSTER_MODE === "hosted")
+  throw new Error("Hosted mode needs a configured identity provider and isolated compile worker; startup is disabled until both are implemented.");
 const app = Fastify({ logger: true, bodyLimit: 10_000_000 });
+const fileWrites = new Map<string, Promise<void>>();
+const etag = (bytes: Buffer) => `"${createHash("sha256").update(bytes).digest("hex")}"`;
 await app.register(multipart, { limits: { fileSize: 30_000_000 } });
 app.addHook("onRequest", async (request, reply) => {
   const origin = request.headers.origin;
@@ -73,6 +79,9 @@ app.get<{ Params: { id: string } }>("/api/projects/:id", async (request) =>
 app.patch<{ Params: { id: string } }>("/api/projects/:id", async (request) =>
   updateProject(request.params.id, request.body as Record<string, unknown>),
 );
+app.post<{ Params: { id: string } }>("/api/projects/:id/trust", async (request) =>
+  trustImportedProject(request.params.id),
+);
 app.delete<{ Params: { id: string } }>("/api/projects/:id", async (request) => {
   await deleteProject(request.params.id);
   return { ok: true };
@@ -86,6 +95,7 @@ app.get<{ Params: { id: string }; Querystring: { path: string } }>(
   async (request, reply) => {
     const bytes = await readProjectFile(request.params.id, request.query.path);
     reply
+      .header("ETag", etag(bytes))
       .type(
         /\.(tex|bib|txt|md|json)$/i.test(request.query.path)
           ? "text/plain; charset=utf-8"
@@ -96,13 +106,28 @@ app.get<{ Params: { id: string }; Querystring: { path: string } }>(
 );
 app.put<{ Params: { id: string }; Querystring: { path: string } }>(
   "/api/projects/:id/file",
-  async (request) => {
-    await writeProjectFile(
-      request.params.id,
-      request.query.path,
-      request.body as string,
-    );
-    return { ok: true };
+  async (request, reply) => {
+    const key = `${request.params.id}:${request.query.path}`;
+    const previous = fileWrites.get(key) || Promise.resolve();
+    let release!: () => void;
+    const next = new Promise<void>((resolve) => { release = resolve; });
+    fileWrites.set(key, next);
+    await previous;
+    try {
+      let current: Buffer | undefined;
+      try { current = await readProjectFile(request.params.id, request.query.path); }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
+      const expected = request.headers["if-match"];
+      if (expected && (!current || etag(current) !== expected))
+        return reply.code(409).send({ conflict: true, currentEtag: current ? etag(current) : null });
+      await writeProjectFile(request.params.id, request.query.path, request.body as string);
+      return { ok: true, etag: etag(Buffer.from(request.body as string)) };
+    } finally {
+      release();
+      if (fileWrites.get(key) === next) fileWrites.delete(key);
+    }
   },
 );
 app.post<{ Params: { id: string }; Querystring: { path: string } }>(

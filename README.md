@@ -16,7 +16,7 @@ pnpm poster:dev
 
 Open `http://127.0.0.1:5173`. The service binds to the local loopback address. The browser stores projects in `.overposter/projects/` and outputs in `.overposter/builds/`.
 
-The default compiler runs local XeLaTeX followed by `xdvipdfmx` in a temporary directory, with shell escape disabled. No login or Docker installation is required for projects created in the app. Imported ZIP projects require the isolated Docker compiler; start the server with `OVERPOSTER_COMPILER=docker` to compile those projects.
+The compiler runs local XeLaTeX followed by `xdvipdfmx` in a temporary directory, with shell escape disabled. Imported ZIP projects require explicit approval in the local interface after you review their source. Hosted compilation is disabled until a separate isolated TeX worker is provisioned and verified.
 
 ## Make a poster
 
@@ -43,7 +43,7 @@ pnpm poster:clean                         # generated PDFs only
 
 The build command fails if TeX fails, the PDF has more than one page, or its measured size differs from the requested size by more than 0.5 mm. It writes `<poster.pdf>.preflight.json` beside a successful PDF. `poster:check` prints a readable summary; `--json` prints the full machine-readable report and `--out` saves it. Preflight checks font embedding and effective DPI of raster images and gives warnings for uncertain print issues. It cannot prove that all content is aesthetically aligned or detect every clipped vector graphic.
 
-Local compilation is intended for poster source you trust. To use the Docker compiler explicitly, set `OVERPOSTER_COMPILER=docker`. CI uses that setting and downloads a pinned Tectonic binary and TeX package bundle for its isolated builds.
+Local compilation is intended for poster source you trust. Install MiKTeX or TeX Live and make `xelatex` and `xdvipdfmx` available on `PATH`. A failed build preserves the previous PDF.
 
 ## Source format
 
@@ -61,6 +61,6 @@ pnpm build
 pnpm examples:build
 ```
 
-GitHub Actions runs static checks and tests, builds all examples with the Docker toolchain, checks their physical sizes and page count, then uploads PDFs as a workflow artifact. Open a successful workflow run and download **overposter-example-pdfs** under **Artifacts**.
+GitHub Actions installs TeX Live on Ubuntu, runs static checks and tests, builds all examples with XeLaTeX, checks their physical sizes and page count, then uploads PDFs and preflight JSON as workflow artifacts. Open a successful workflow run and download **overposter-example-pdfs** and **overposter-preflight-reports** under **Artifacts**.
 
 Overposter is a standalone, single-user local application. Multiuser collaboration and hosted accounts are outside this release. The project and compiler interfaces are file based so they can be integrated with a collaborative service later.

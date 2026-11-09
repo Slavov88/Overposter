@@ -24,6 +24,7 @@ import {
   importZip,
   listFiles,
   readProjectFile,
+  trustImportedProject,
   writeProjectFile,
 } from "../apps/server/src/projects.js";
 import { buildProject, runCommand } from "../apps/server/src/compiler.js";
@@ -74,11 +75,13 @@ describe("poster model and files", () => {
     const imported = await importZip("Imported", zip);
     ids.push(imported.id);
     expect(imported.imported).toBe(true);
-    if (process.env.OVERPOSTER_COMPILER !== "docker") {
-      const build = await buildProject(imported.id);
-      expect(build.ok).toBe(false);
-      expect(build.log).toContain("Imported projects require the Docker compiler");
-    }
+    const blocked = await buildProject(imported.id);
+    expect(blocked.ok).toBe(false);
+    expect(blocked.log).toContain("approve local compilation");
+    await trustImportedProject(imported.id);
+    const built = await buildProject(imported.id);
+    expect(built.ok, built.log).toBe(true);
+    expect(built.report?.pageCount).toBe(1);
     expect(await readProjectFile(imported.id, "figures/pixels.bin")).toEqual(
       Buffer.from([0, 255, 128]),
     );

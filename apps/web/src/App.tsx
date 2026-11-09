@@ -90,6 +90,7 @@ export default function App() {
     [selected, setSelected] = useState("poster.tex"),
     [content, setContent] = useState(""),
     [dirty, setDirty] = useState(false),
+    [saveState, setSaveState] = useState<"clean" | "dirty" | "saving" | "error" | "conflict">("clean"),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -109,6 +110,8 @@ export default function App() {
     activeRef = useRef<Project | null>(null),
     dirtyRef = useRef(false),
     saving = useRef<Promise<void> | null>(null),
+    etagRef = useRef<string | null>(null),
+    requestId = useRef(0),
     fileInput = useRef<HTMLInputElement>(null),
     assetInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -125,7 +128,16 @@ export default function App() {
     setProjects(await api<Project[]>("/projects"));
   }
   async function open(project: Project) {
+    await save();
+    const request = ++requestId.current;
     setError("");
+    const [list, response] = await Promise.all([
+      api<string[]>(`/projects/${project.id}/files`),
+      fetch(fileUrl(project.id, "poster.tex")),
+    ]);
+    if (!response.ok) throw new Error("Could not open poster source");
+    const text = await response.text();
+    if (request !== requestId.current) return;
     setActive(project);
     activeRef.current = project;
     setResult(null);
@@ -133,30 +145,48 @@ export default function App() {
     selectedRef.current = "poster.tex";
     setDirty(false);
     dirtyRef.current = false;
-    const [list, text] = await Promise.all([
-      api<string[]>(`/projects/${project.id}/files`),
-      fetch(fileUrl(project.id, "poster.tex")).then((r) => r.text()),
-    ]);
+    setSaveState("clean");
+    etagRef.current = response.headers.get("ETag");
     setFiles(list);
-    setContent(text);
-    contentRef.current = text;
+    const recovered = localStorage.getItem(`overposter-draft:${project.id}:poster.tex`);
+    const restore = recovered !== null && recovered !== text && confirm("A locally saved draft is available for this poster. Restore it?");
+    setContent(restore ? recovered! : text);
+    contentRef.current = restore ? recovered! : text;
+    if (restore) {
+      dirtyRef.current = true;
+      setDirty(true);
+      setSaveState("dirty");
+    }
     const head = await fetch(pdfUrl(project.id), { method: "HEAD" });
+    if (request !== requestId.current) return;
     setHasPdf(head.ok);
     setPdfVersion((v) => v + 1);
   }
   async function save() {
     const project = activeRef.current;
-    if (!project || !dirtyRef.current) return;
-    if (saving.current) await saving.current;
-    const text = contentRef.current,
-      path = selectedRef.current;
-    saving.current = fetch(fileUrl(project.id, path), {
+    if (!project) return;
+    while (dirtyRef.current || saving.current) {
+      if (saving.current) {
+        await saving.current;
+        continue;
+      }
+      const text = contentRef.current,
+        path = selectedRef.current,
+        expected = etagRef.current;
+      setSaveState("saving");
+      saving.current = fetch(fileUrl(project.id, path), {
       method: "PUT",
-      headers: { "Content-Type": "text/plain" },
+      headers: { "Content-Type": "text/plain", ...(expected ? { "If-Match": expected } : {}) },
       body: text,
     })
       .then(async (r) => {
-        if (!r.ok) throw new Error((await r.json()).error || "Save failed");
+        const result = await r.json();
+        if (result.conflict) {
+          setSaveState("conflict");
+          throw new Error("This file changed elsewhere. Your draft is preserved; copy it before resolving the conflict.");
+        }
+        if (!r.ok) throw new Error(result.error || "Save failed");
+        etagRef.current = result.etag;
         if (
           activeRef.current?.id === project.id &&
           contentRef.current === text &&
@@ -164,13 +194,27 @@ export default function App() {
         ) {
           dirtyRef.current = false;
           setDirty(false);
+          setSaveState("clean");
+          localStorage.removeItem(`overposter-draft:${project.id}:${path}`);
         }
+      })
+      .catch((e) => {
+        if (!(e instanceof Error && e.message.startsWith("This file changed elsewhere"))) setSaveState("error");
+        throw e;
       })
       .finally(() => {
         saving.current = null;
       });
-    await saving.current;
+      await saving.current;
+    }
   }
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (dirtyRef.current || saving.current) event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, []);
   useEffect(() => {
     if (!dirty) return;
     const timer = setTimeout(
@@ -182,6 +226,7 @@ export default function App() {
   async function selectFile(path: string) {
     try {
       await save();
+      const request = ++requestId.current;
       const project = activeRef.current!;
       if (!/\.(tex|bib|txt|md)$/i.test(path)) {
         window.open(fileUrl(project.id, path), "_blank");
@@ -190,12 +235,17 @@ export default function App() {
       const response = await fetch(fileUrl(project.id, path));
       if (!response.ok) throw new Error("Could not open file");
       const text = await response.text();
+      if (request !== requestId.current || project.id !== activeRef.current?.id) return;
+      etagRef.current = response.headers.get("ETag");
       selectedRef.current = path;
       setSelected(path);
-      contentRef.current = text;
-      setContent(text);
-      setDirty(false);
-      dirtyRef.current = false;
+      const recovered = localStorage.getItem(`overposter-draft:${project.id}:${path}`);
+      const restore = recovered !== null && recovered !== text && confirm("A locally saved draft is available for this file. Restore it?");
+      contentRef.current = restore ? recovered! : text;
+      setContent(restore ? recovered! : text);
+      setDirty(restore);
+      dirtyRef.current = restore;
+      setSaveState(restore ? "dirty" : "clean");
     } catch (e) {
       setError(friendly(e));
     }
@@ -244,6 +294,12 @@ export default function App() {
     setError("");
     try {
       await save();
+      if (active.imported && !active.trusted) {
+        if (!confirm("Imported LaTeX can read local files. Review the source first. Trust this project for local compilation?")) return;
+        const approved = await api<Project>(`/projects/${active.id}/trust`, json("POST", {}));
+        setActive(approved);
+        activeRef.current = approved;
+      }
       const r = await api<Build>(
         `/projects/${active.id}/build`,
         json("POST", {}),
@@ -301,6 +357,7 @@ export default function App() {
     const path = prompt("New file path (for example sections/discussion.tex)");
     if (!path) return;
     try {
+      await save();
       const response = await fetch(fileUrl(active.id, path), {
         method: "PUT",
         headers: { "Content-Type": "text/plain" },
@@ -450,10 +507,12 @@ export default function App() {
             <button
               className="text-button"
               onClick={() => {
-                save().catch((e) => setError(friendly(e)));
-                setActive(null);
-                activeRef.current = null;
-                refresh();
+                save().then(() => {
+                  ++requestId.current;
+                  setActive(null);
+                  activeRef.current = null;
+                  refresh();
+                }).catch((e) => setError(friendly(e)));
               }}
             >
               <ArrowLeft size={17} />
@@ -633,11 +692,7 @@ export default function App() {
                 <Settings2 size={16} />
                 Poster settings
               </button>
-              <button
-                onClick={() =>
-                  (location.href = `/api/projects/${active.id}/export`)
-                }
-              >
+              <button onClick={() => save().then(() => { location.href = `/api/projects/${active.id}/export`; }).catch((e) => setError(friendly(e)))}>
                 <Download size={16} />
                 Export source ZIP
               </button>
@@ -659,8 +714,9 @@ export default function App() {
               </div>
               <div className="workspace-actions">
                 <span className={"save-state " + (dirty ? "unsaved" : "")}>
-                  {dirty ? "Unsaved changes" : "Saved"}
+                  {saveState === "clean" ? "Saved" : saveState === "dirty" ? "Unsaved changes" : saveState === "saving" ? "Saving…" : saveState === "conflict" ? "Save conflict — draft preserved" : "Save failed — retry"}
                 </span>
+                {(saveState === "error" || saveState === "conflict") && <button className="secondary" onClick={() => save().catch((e) => setError(friendly(e)))}>Retry save</button>}
                 <button
                   className="secondary"
                   onClick={() => {
@@ -703,6 +759,8 @@ export default function App() {
                     setContent(value);
                     dirtyRef.current = true;
                     setDirty(true);
+                    setSaveState("dirty");
+                    if (activeRef.current) localStorage.setItem(`overposter-draft:${activeRef.current.id}:${selectedRef.current}`, value);
                   }}
                   basicSetup={{ lineNumbers: true, foldGutter: true }}
                 />

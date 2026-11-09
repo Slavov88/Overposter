@@ -3,7 +3,6 @@ import {
   mkdtemp,
   cp,
   mkdir,
-  chmod,
   readFile,
   rename,
   rm,
@@ -13,7 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { root, sourceDir, listFiles, getProject, dataDir } from "./projects.js";
+import { sourceDir, listFiles, getProject, dataDir } from "./projects.js";
 import { preflight, type PreflightReport } from "./preflight.js";
 
 export type BuildResult = {
@@ -24,8 +23,6 @@ export type BuildResult = {
   report?: PreflightReport;
   cached?: boolean;
 };
-const image = "overposter-tectonic:0.16.9";
-const useDocker = () => process.env.OVERPOSTER_COMPILER === "docker";
 export async function runCommand(
   exe: string,
   args: string[],
@@ -61,43 +58,6 @@ export async function runCommand(
     });
   });
 }
-const command = runCommand;
-let imagePromise: Promise<void> | undefined;
-async function ensureImage() {
-  if (!imagePromise)
-    imagePromise = (async () => {
-      const daemon = await command(
-        "docker",
-        ["info", "--format", "{{.ServerVersion}}"],
-        15000,
-      );
-      if (daemon.code !== 0)
-        throw new Error(
-          "Docker Engine is not responding. Start Docker Desktop or Docker Engine and retry. " +
-            daemon.log,
-        );
-      const check = await command("docker", ["image", "inspect", image], 15000);
-      if (check.code === 0) return;
-      const built = await command(
-        "docker",
-        [
-          "build",
-          "-t",
-          image,
-          "-f",
-          join(root, "docker", "tectonic", "Dockerfile"),
-          root,
-        ],
-        900000,
-      );
-      if (built.code !== 0)
-        throw new Error("Docker image build failed: " + built.log);
-    })().catch((e) => {
-      imagePromise = undefined;
-      throw e;
-    });
-  return imagePromise;
-}
 export async function buildSource(
   source: string,
   output: string,
@@ -108,18 +68,13 @@ export async function buildSource(
   try {
     await cp(source, staging, { recursive: true });
     await mkdir(join(staging, "out"));
-    if (useDocker()) {
-      await chmod(staging, 0o777);
-      await chmod(join(staging, "out"), 0o777);
-    }
-    let run: { code: number; log: string; timedOut: boolean };
-    if (!useDocker()) {
-      run = await command(
+    let run = await runCommand(
         "xelatex",
         [
           "-no-pdf",
           "-interaction=nonstopmode",
           "-halt-on-error",
+          "-file-line-error",
           "-no-shell-escape",
           "-output-directory=out",
           "poster.tex",
@@ -127,8 +82,8 @@ export async function buildSource(
         120000,
         staging,
       );
-      if (run.code === 0) {
-        const final = await command(
+    if (run.code === 0) {
+        const final = await runCommand(
           "xdvipdfmx",
           ["-o", "out/poster.pdf", "out/poster.xdv"],
           120000,
@@ -139,41 +94,6 @@ export async function buildSource(
           log: run.log + "\n" + final.log,
           timedOut: run.timedOut || final.timedOut,
         };
-      }
-    } else {
-      await ensureImage();
-      const mount = resolve(staging).replaceAll("\\", "/");
-      run = await command(
-        "docker",
-        [
-          "run",
-          "--rm",
-          "--network",
-          "none",
-          "--cpus=2",
-          "--memory=1g",
-          "--pids-limit=128",
-          "--cap-drop=ALL",
-          "--security-opt=no-new-privileges",
-          "--tmpfs",
-          "/tmp:rw,nosuid,nodev,size=256m",
-          "-v",
-          `${mount}:/work:rw`,
-          "-w",
-          "/work",
-          image,
-          "tectonic",
-          "-X",
-          "compile",
-          "--only-cached",
-          "--untrusted",
-          "--keep-logs",
-          "--outdir",
-          "out",
-          "poster.tex",
-        ],
-        150000,
-      );
     }
     if (run.timedOut)
       return {
@@ -184,7 +104,9 @@ export async function buildSource(
     if (run.code !== 0)
       return {
         ok: false,
-        log: run.log || "Compiler failed",
+        log: run.log.includes("ENOENT")
+          ? "XeLaTeX or xdvipdfmx is missing. Install MiKTeX (Windows) or TeX Live and add both commands to PATH.\n" + run.log
+          : run.log || "Compiler failed",
         durationMs: Date.now() - start,
       };
     const pdf = join(staging, "out", "poster.pdf");
@@ -235,10 +157,16 @@ export async function buildSource(
 }
 export async function buildProject(id: string): Promise<BuildResult> {
   const project = await getProject(id);
-  if (project.imported && !useDocker())
+  if (process.env.OVERPOSTER_MODE === "hosted")
     return {
       ok: false,
-      log: "Imported projects require the Docker compiler. Set OVERPOSTER_COMPILER=docker to build this project.",
+      log: "Hosted compilation is disabled until an isolated TeX worker is configured and verified.",
+      durationMs: 0,
+    };
+  if (project.imported && !project.trusted)
+    return {
+      ok: false,
+      log: "Review this imported project and approve local compilation before building it.",
       durationMs: 0,
     };
   const source = await sourceDir(id);

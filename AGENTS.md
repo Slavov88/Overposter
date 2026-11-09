@@ -12,6 +12,6 @@ To edit a poster:
 6. Confirm one page and the requested dimensions in the report. Review the visible PDF at poster scale.
 7. Report changed source files and the final PDF path.
 
-Do not edit generated `config.tex` in an app project; change poster settings. Do not overwrite concurrent changes: inspect `git diff` and file timestamps before writing, save focused changes, and re-read a file if someone else may have edited it. Keep generated PDFs out of commits unless deliberately publishing an example. Do not compile untrusted LaTeX with the local engine; use Docker.
+Do not edit generated `config.tex` in an app project; change poster settings. Do not overwrite concurrent changes: inspect `git diff` and file timestamps before writing, save focused changes, and re-read a file if someone else may have edited it. Keep generated PDFs out of commits unless deliberately publishing an example. In local mode, review imported LaTeX and explicitly approve it before compilation. Hosted compilation must use a separately isolated worker; never run untrusted TeX directly as the web server user.
 
 Run `pnpm typecheck`, `pnpm lint`, `pnpm test`, and `pnpm examples:build` after code or template changes. Avoid claiming a compiler check passed unless the real toolchain completed it.

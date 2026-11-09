@@ -6,6 +6,7 @@ import {
   cp,
   rm,
   stat,
+  lstat,
 } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -42,6 +43,7 @@ export type Project = {
   config: PosterConfig;
   updatedAt: string;
   imported?: boolean;
+  trusted?: boolean;
 };
 const projectDir = (id: string) => {
   if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error("Invalid project ID");
@@ -160,7 +162,28 @@ export async function writeProjectFile(
     throw new Error("Edit poster configuration instead");
   if (Buffer.byteLength(data) > 8_000_000) throw new Error("File too large");
   await mkdir(dirname(full), { recursive: true });
+  let cursor = dirname(full);
+  while (cursor.startsWith(base) && cursor !== base) {
+    const info = await lstat(cursor);
+    if (info.isSymbolicLink()) throw new Error("Symbolic links are not allowed in projects");
+    cursor = dirname(cursor);
+  }
+  try {
+    if ((await lstat(full)).isSymbolicLink())
+      throw new Error("Symbolic links are not allowed in projects");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
   await writeFile(full, data);
+}
+export async function trustImportedProject(id: string): Promise<Project> {
+  if (process.env.OVERPOSTER_MODE === "hosted")
+    throw new Error("Imported source cannot be trusted for direct compilation in hosted mode");
+  const project = await getProject(id);
+  if (!project.imported) throw new Error("Only imported projects need approval");
+  project.trusted = true;
+  await writeFile(join(projectDir(id), "project.json"), JSON.stringify(project, null, 2) + "\n");
+  return project;
 }
 export async function sourceDir(id: string) {
   await getProject(id);
@@ -180,6 +203,10 @@ export async function importZip(
     for (const e of entries) {
       if (e.directory) continue;
       const path = safePath(e.filename);
+      if (path.split("/").some((part) => part.toLowerCase() === ".git"))
+        throw new Error("ZIP cannot include Git internals");
+      if (e.unixMode && (e.unixMode & 0o170000) === 0o120000)
+        throw new Error("ZIP cannot include symbolic links");
       if (e.uncompressedSize > 8_000_000) throw new Error("File too large");
       total += e.uncompressedSize;
       if (total > 40_000_000) throw new Error("ZIP expands too large");
