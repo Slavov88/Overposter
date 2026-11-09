@@ -5,3 +5,5 @@ Each project has a bare Git repository under `.overposter/versions/<id>.git`, se
 Restore checks the expected history head, first records a `Before restore` checkpoint, then writes the selected version to source and commits a restore event. Earlier commits remain reachable. Browser drafts and ETag conflicts are separate from Git history; resolve an unsaved conflict before restoring.
 
 Back up the project directory and its matching version repository together while the app is stopped. A source ZIP exports poster source but not version history. Restoring an external backup should replace both parts as a pair.
+
+In the loopback shared-editing test harness, also back up the matching `access/<id>.json` and `collaboration/<id>/` state from the same stopped data root. Checkpoint and restore wait for queued Yjs writes. The public hosted migration still needs a transactional backup and rollback procedure.

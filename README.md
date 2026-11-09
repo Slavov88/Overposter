@@ -64,3 +64,5 @@ pnpm examples:build
 GitHub Actions installs TeX Live on Ubuntu, runs static checks and tests, builds all examples with XeLaTeX, checks their physical sizes and page count, then uploads PDFs and preflight JSON as workflow artifacts. Open a successful workflow run and download **overposter-example-pdfs** and **overposter-preflight-reports** under **Artifacts**.
 
 Overposter currently runs as a standalone, single-user local application. The editor has conflict detection and recoverable local drafts, and project history supports checkpoints, diffs, and restore. Hosted accounts, project sharing, real-time collaboration, and hosted compilation are not yet available. See [Toni handoff](docs/TONI_HANDOFF.md) for the integration boundary and deployment prerequisites.
+
+The repository includes a guarded loopback test harness for project roles and persistent Yjs WebSocket edits. It is exercised by `tests/collaboration.test.ts`; the browser editor is not yet connected to it. Its header-based test identities must not be used for public hosting.

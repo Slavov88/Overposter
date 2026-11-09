@@ -10,9 +10,9 @@ Overposter is a separate MIT-licensed poster application. Its current release is
 | Local XeLaTeX build, print preflight, QR, three templates | Implemented locally | `pnpm test` and `pnpm examples:build` run actual TeX. Generated PDFs and reports remain local build artifacts. |
 | ETag conflict detection, recoverable browser draft, Git checkpoints and restore | Implemented locally | REST file writes reject stale ETags; project history is stored outside source. Multiuser transaction semantics remain to be built. |
 | Site account login and service approval | Requires Toni | No credentials or confirmed provider contract have been supplied. No production login is claimed. |
-| Test identity provider | Not implemented | No simulated hosted identity flow is shipped; public mode remains closed. |
-| Project membership, invitations and role enforcement | Not implemented | The local API has one trusted user. Public binding must remain disabled. |
-| Shared editing, presence and durable CRDT state | Not implemented | There is no WebSocket or Yjs service yet. ETags only prevent some overwrites. |
+| Test identity provider | Implemented in test mode | A guarded loopback header simulates exact subjects. It is not public authentication. |
+| Project membership and role enforcement | Implemented in test mode | Owner/editor/viewer checks cover project REST routes and WebSockets. No invitation or sharing UI exists yet. |
+| Shared editing and durable CRDT state | Implemented in test mode, partial product | Yjs WebSocket updates converge and persist across restart in tests. The browser editor and remote cursor UI are not wired to it. |
 | Isolated hosted TeX worker | Not implemented | Hosted startup and compilation fail closed. Native TeX in the web server is unsuitable for arbitrary hosted source. |
 | Overroot project links and scoped sync | Not implemented | Source ZIP import/export is the manual handoff. No automatic cross-app permission or sync exists. |
 
@@ -26,7 +26,7 @@ The current Fastify process binds to `127.0.0.1`. Do not change its bind address
 
 Please register the exact service ID `overposter` with an agreed public origin and callback URL. Supply credentials through the secret store, never through this repository. Confirm the provider's issuer URL and discovery/JWKS mechanism, immutable subject identifier, service-grant claim or introspection method, approved-handle lookup/invitation method, token expiry/revocation semantics, callback and logout endpoints, state/PKCE requirements, and allowed cookie domain/SameSite policy. Overposter must validate issuer, audience/service ID, expiry, callback origin and CSRF state; use server-side sessions; and key user records by immutable subject. A user approved for Overroot must not gain Overposter access automatically.
 
-Proposed environment contract, **not yet implemented** except the first three variables:
+Environment contract; production account and worker variables are **not yet implemented**:
 
 | Variable | Status and meaning |
 | --- | --- |
@@ -34,6 +34,7 @@ Proposed environment contract, **not yet implemented** except the first three va
 | `OVERPOSTER_WEB_PORT` | Implemented: allowed local Vite origin port, default `5173`. |
 | `OVERPOSTER_DATA` | Implemented: project, build and version storage root. Back up the entire directory together. |
 | `OVERPOSTER_MODE` | `local` or unset works; `hosted` currently refuses startup. |
+| `OVERPOSTER_TEST_IDENTITIES` | Test harness only: `1` plus `NODE_ENV=test` and `OVERPOSTER_MODE=test-hosted`; never deploy. |
 | `OVERPOSTER_PUBLIC_ORIGIN` | Proposed: canonical HTTPS origin for redirects and CSRF checks. |
 | `OVERPOSTER_ACCOUNTS_ISSUER` | Proposed: provider issuer from Toni's contract. |
 | `OVERPOSTER_ACCOUNTS_CLIENT_ID` | Proposed: distinct `overposter` client ID. |
@@ -46,8 +47,8 @@ Do not set the proposed variables expecting them to enable hosted operation in t
 ## Implementation and deployment sequence
 
 1. Agree on the account contract and register the `overposter` service and callback. Implement a provider adapter and server-side sessions, then test with two approved and one unapproved test accounts. Reject startup when any required value is absent.
-2. Add durable user and project membership storage with migrations. Back up `.overposter` before migration; test upgrade and rollback on a copy. Enforce owner/editor/viewer checks on every project, file, PDF, export, history, restore, and compile route. Revoke active connections when membership changes.
-3. Add a persistent per-file collaborative document service. Authenticate each WebSocket connection and each update; reject viewer writes. Define one authoritative flush from shared state to source before compilation and checkpointing. Test two editors, reconnect, restart recovery, revocation, conflict, and attribution.
+2. Replace the guarded test identity with real site account sessions and a durable user/member database with migrations. Back up `.overposter` before migration; test upgrade and rollback on a copy. Re-run owner/editor/viewer route and WebSocket tests using real provider subjects and revocation.
+3. Connect the browser editor to the existing test Yjs protocol, including remote cursors, connection state and offline/reconnect behavior. Define cross-process serialization and source revision pinning before moving beyond a single test process. Test two browser editors, restart recovery, revocation, conflict and attribution.
 4. Provision the TeX worker on a separate unprivileged VM or verified OS sandbox. Give each job a fresh source directory and output directory, no network, no writable shared mounts, no secrets, bounded process tree, CPU, memory, disk, file count and wall time, limited concurrency, cancellation, and log redaction. Accept only authenticated jobs pinned to an immutable source revision. Return artifacts by controlled transfer. Do not provide a native web-server fallback.
 5. Add audit events for login, membership, file changes, compile, checkpoint, restore and export. Restrict and rotate logs, retain database and project/version backups, and test restore. Verify health, readiness, quotas and failure behavior before enabling ingress.
 6. Run `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:e2e`, `pnpm examples:build`, and the isolated-worker adversarial suite in CI. Check actual generated PDF pages and preflight JSON. Deploy behind a staged origin; verify login, logout/revocation, owner/editor/viewer access, presence, history, compile and rollback with test accounts. Enable the public origin only after those checks.
@@ -58,4 +59,4 @@ The working exchange is source ZIP export/import with explicit local trust revie
 
 ## Paste-ready request
 
-> Overposter is working locally with real XeLaTeX builds, print preflight, structured poster metadata and Git source history. Public hosting remains gated: it has no account adapter, project roles, shared editing or isolated compile worker. Please register an independent `overposter` service with the site account authority, provide the issuer/claim/callback/logout and approved-handle lookup contract, and provision a separate secret store, persistent volume and isolated TeX worker environment. We will implement and test role enforcement, two-user collaboration, worker isolation, migration and rollback against that contract before enabling a public origin. No Overroot credential or membership will be reused.
+> Overposter is working locally with real XeLaTeX builds, print preflight, structured poster metadata and Git source history. A guarded loopback test harness now exercises project roles and persistent two-user Yjs editing, but the browser is not connected to it. Public hosting remains gated: it has no site account adapter or isolated compile worker. Please register an independent `overposter` service with the site account authority, provide the issuer/claim/callback/logout and approved-handle lookup contract, and provision a separate secret store, persistent volume and isolated TeX worker environment. We will connect the editor, migrate membership, and test worker isolation and rollback against that contract before enabling a public origin. No Overroot credential or membership will be reused.
