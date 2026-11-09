@@ -1,27 +1,32 @@
 \documentclass{article}
 \input{config.tex}
-\usepackage[paperwidth=\PosterWidth mm,paperheight=\PosterHeight mm,margin=25mm]{geometry}
-\usepackage{amsmath,amssymb,graphicx,xcolor,tikz}
-\pagestyle{empty}
-\definecolor{ink}{HTML}{14213D}
-\definecolor{accent}{HTML}{126D78}
-\definecolor{soft}{HTML}{E7F2F1}
-\setlength{\parindent}{0pt}
-\newcommand{\card}[2]{\vspace{8mm}\colorbox{soft}{\parbox{0.94\linewidth}{\vspace{7mm}{\color{accent}\fontsize{39}{46}\selectfont\bfseries #1}\par\vspace{7mm}{\color{ink}\fontsize{29}{37}\selectfont #2}\vspace{7mm}}}\par}
+\usepackage[paperwidth=\PosterWidth mm,paperheight=\PosterHeight mm,margin=24mm]{geometry}
+\usepackage{xcolor}
+\definecolor{accent}{HTML}{0D766E}
+\definecolor{ink}{HTML}{153448}
+\definecolor{pale}{HTML}{E8F3F0}
+\input{poster-layout.tex}
+\newcommand{\PosterHeading}[1]{{\color{accent}\fontsize{\PosterHeadingSize pt}{42pt}\selectfont\bfseries #1}\par}
 \begin{document}
-\IfFileExists{assets/logo.pdf}{\includegraphics[height=30mm]{assets/logo.pdf}\par\vspace{5mm}}{}
-\colorbox{ink}{\parbox{0.97\textwidth}{\vspace{11mm}\hspace{7mm}{\color{white}\fontsize{76}{84}\selectfont\bfseries\PosterTitle}\par\vspace{5mm}\hspace{7mm}{\color{white}\fontsize{35}{42}\selectfont\PosterSubtitle}\par\vspace{8mm}\hspace{7mm}{\color{white}\fontsize{29}{35}\selectfont\PosterAuthors\quad\textbar\quad\PosterAffiliation}\vspace{10mm}}}\par\vspace{8mm}
-\begin{minipage}[t]{0.31\textwidth}
-\card{01 / Why it matters}{\input{sections/introduction.tex}}
-\card{02 / Approach}{\input{sections/methodology.tex}}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.31\textwidth}
-\card{03 / Experimental setup}{\input{sections/study.tex}}
-\card{04 / Results}{\input{sections/results.tex}}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.31\textwidth}
-\card{Takeaway}{\input{sections/conclusions.tex}}
-\card{Further reading}{\input{sections/references.tex}}
-\vspace{12mm}{\color{ink}\fontsize{27}{34}\selectfont\fbox{\parbox{0.88\linewidth}{\centering\vspace{10mm}QR code placeholder\\\PosterPaperURL\vspace{10mm}}}\par\vspace{9mm}\PosterContact}
+\noindent\colorbox{ink}{\begin{minipage}{\dimexpr\linewidth-2\fboxsep\relax}
+\vspace{8mm}\hspace{8mm}\begin{minipage}[c]{0.80\linewidth}
+{\color{white}\fontsize{\PosterTitleSize pt}{70pt}\selectfont\bfseries\PosterTitle\par}
+\vspace{2mm}{\color{white}\fontsize{27}{34}\selectfont\PosterSubtitle\par}
+\vspace{4mm}{\color{white}\PosterMetadata}
 \end{minipage}
+\IfFileExists{assets/logo.pdf}{\hfill\begin{minipage}[c]{0.13\linewidth}\includegraphics[width=\linewidth]{assets/logo.pdf}\end{minipage}}{}
+\vspace{8mm}
+\end{minipage}}\par\vspace{8mm}
+\noindent\colorbox{pale}{\begin{minipage}{\dimexpr\linewidth-2\fboxsep\relax}\vspace{5mm}\hspace{7mm}\begin{minipage}{0.94\linewidth}
+{\color{ink}\fontsize{25}{32}\selectfont\bfseries Key takeaway\par}
+\vspace{2mm}{\PosterBody\input{sections/conclusions.tex}\par}
+\end{minipage}\vspace{5mm}\end{minipage}}\par\vspace{5mm}
+\PosterGrid{
+\PosterBlock{The question}{\input{sections/introduction.tex}}
+\PosterBlock{Approach}{\input{sections/methodology.tex}}
+\PosterBlock{Experimental setup}{\input{sections/study.tex}}
+\PosterBlock{Main result}{\input{sections/results.tex}}
+\PosterBlock{Sources}{\input{sections/references.tex}}
+\PosterContactBlock
+}
 \end{document}

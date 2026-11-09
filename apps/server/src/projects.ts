@@ -4,6 +4,7 @@ import {
   readFile,
   writeFile,
   cp,
+  copyFile,
   rm,
   stat,
   lstat,
@@ -13,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import {
   posterConfigSchema,
+  parsePosterConfig,
   defaults,
   configTex,
   safePath,
@@ -73,9 +75,10 @@ export async function listProjects(): Promise<Project[]> {
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 export async function getProject(id: string): Promise<Project> {
-  return JSON.parse(
+  const project = JSON.parse(
     await readFile(join(projectDir(id), "project.json"), "utf8"),
   ) as Project;
+  return { ...project, config: parsePosterConfig(project.config) };
 }
 export async function createProject(
   name: string,
@@ -90,6 +93,8 @@ export async function createProject(
     await cp(join(root, "templates", config.theme), filesDir(id), {
       recursive: true,
     });
+  if (useTemplate)
+    await copyFile(join(root, "templates", "shared", "poster-layout.tex"), join(filesDir(id), "poster-layout.tex"));
   await mkdir(join(filesDir(id), "figures"), { recursive: true });
   await mkdir(join(filesDir(id), "assets"), { recursive: true });
   const project = {
@@ -103,6 +108,7 @@ export async function createProject(
     JSON.stringify(project, null, 2) + "\n",
   );
   await writeFile(join(filesDir(id), "config.tex"), configTex(config));
+  await writeFile(join(filesDir(id), "poster.json"), JSON.stringify(config, null, 2) + "\n");
   return project;
 }
 export async function updateProject(
@@ -120,6 +126,7 @@ export async function updateProject(
     JSON.stringify(project, null, 2) + "\n",
   );
   await writeFile(join(filesDir(id), "config.tex"), configTex(config));
+  await writeFile(join(filesDir(id), "poster.json"), JSON.stringify(config, null, 2) + "\n");
   return project;
 }
 export async function deleteProject(id: string) {
@@ -129,6 +136,7 @@ export async function deleteProject(id: string) {
     rm(output, { force: true }),
     rm(output + ".sha256", { force: true }),
     rm(output + ".preflight.json", { force: true }),
+    rm(join(dataDir, "versions", `${id}.git`), { recursive: true, force: true }),
   ]);
 }
 export async function listFiles(id: string): Promise<string[]> {
@@ -203,8 +211,6 @@ export async function importZip(
     for (const e of entries) {
       if (e.directory) continue;
       const path = safePath(e.filename);
-      if (path.split("/").some((part) => part.toLowerCase() === ".git"))
-        throw new Error("ZIP cannot include Git internals");
       if (e.unixMode && (e.unixMode & 0o170000) === 0o120000)
         throw new Error("ZIP cannot include symbolic links");
       if (e.uncompressedSize > 8_000_000) throw new Error("File too large");
@@ -213,6 +219,7 @@ export async function importZip(
       if (contents.has(path)) throw new Error("Duplicate ZIP path");
       const writer = new Uint8ArrayWriter();
       const data = await e.getData!(writer);
+      if (data.byteLength !== e.uncompressedSize) throw new Error("ZIP size mismatch");
       contents.set(path, data);
     }
   } finally {
@@ -222,7 +229,7 @@ export async function importZip(
     throw new Error("ZIP needs poster.tex at its root");
   let config: PosterConfig = defaults;
   if (contents.has("poster.json"))
-    config = posterConfigSchema.parse(
+    config = parsePosterConfig(
       JSON.parse(new TextDecoder().decode(contents.get("poster.json"))),
     );
   const project = await createProject(name, { ...config }, false);

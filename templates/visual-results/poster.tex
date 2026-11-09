@@ -1,22 +1,30 @@
 \documentclass{article}
 \input{config.tex}
-\usepackage[paperwidth=\PosterWidth mm,paperheight=\PosterHeight mm,margin=25mm]{geometry}
-\usepackage{amsmath,amssymb,graphicx,xcolor,tikz}
-\pagestyle{empty}
-\definecolor{ink}{HTML}{232B39}
-\definecolor{accent}{HTML}{C8533E}
-\definecolor{mist}{HTML}{F8EEE9}
-\setlength{\parindent}{0pt}
-\newcommand{\labelhead}[1]{\par{\color{accent}\fontsize{31}{37}\selectfont\bfseries #1}\par\vspace{5mm}}
-\newcommand{\copytext}{\fontsize{23}{29}\selectfont}
+\usepackage[paperwidth=\PosterWidth mm,paperheight=\PosterHeight mm,margin=24mm]{geometry}
+\usepackage{xcolor}
+\definecolor{accent}{HTML}{A54431}
+\definecolor{ink}{HTML}{25323A}
+\definecolor{pale}{HTML}{F7EDE8}
+\input{poster-layout.tex}
+\newcommand{\PosterHeading}[1]{{\color{accent}\fontsize{\PosterHeadingSize pt}{42pt}\selectfont\bfseries #1}\par}
 \begin{document}
-\IfFileExists{assets/logo.pdf}{\includegraphics[height=30mm]{assets/logo.pdf}\par\vspace{5mm}}{}
-{\color{accent}\rule{\linewidth}{3mm}}\par\vspace{5mm}
-{\color{ink}\fontsize{65}{72}\selectfont\bfseries\PosterTitle}\par\vspace{4mm}
-{\fontsize{28}{34}\selectfont\PosterSubtitle}\par\vspace{4mm}
-\ifx\PosterAuthors\empty\else{\fontsize{23}{29}\selectfont\PosterAuthors\ifx\PosterAffiliation\empty\else\quad / \quad\PosterAffiliation\fi}\par\fi\vspace{10mm}
-\colorbox{mist}{\parbox{0.97\textwidth}{\vspace{5mm}\hspace{8mm}\begin{minipage}{0.92\linewidth}\labelhead{The visual story}\copytext\input{sections/study.tex}\end{minipage}\vspace{5mm}}}\par\vspace{8mm}
-\begin{minipage}[t]{0.31\textwidth}\labelhead{The question}\copytext\input{sections/introduction.tex}\vspace{7mm}\labelhead{Method}\copytext\input{sections/methodology.tex}\end{minipage}\hfill
-\begin{minipage}[t]{0.31\textwidth}\labelhead{Measured outcomes}\copytext\input{sections/results.tex}\end{minipage}\hfill
-\begin{minipage}[t]{0.31\textwidth}\labelhead{What to remember}\copytext\input{sections/conclusions.tex}\vspace{8mm}\labelhead{Sources and contact}\copytext\input{sections/references.tex}\par\vspace{5mm}\fbox{\parbox{0.90\linewidth}{\centering\vspace{7mm}QR code placeholder\\\PosterPaperURL\vspace{7mm}}}\par\PosterContact\end{minipage}
+{\color{accent}\hrule height 7pt}\vspace{6mm}
+\IfFileExists{assets/logo.pdf}{\noindent\includegraphics[height=25mm]{assets/logo.pdf}\par\vspace{4mm}}{}
+\noindent\begin{minipage}[c]{\linewidth}
+{\color{ink}\fontsize{\PosterTitleSize pt}{70pt}\selectfont\bfseries\PosterTitle\par}
+\vspace{3mm}{\fontsize{27}{34}\selectfont\PosterSubtitle\par}
+\vspace{5mm}\PosterMetadata
+\end{minipage}
+\par\vspace{8mm}
+\noindent\colorbox{pale}{\begin{minipage}{\dimexpr\linewidth-2\fboxsep\relax}\vspace{5mm}\hspace{7mm}\begin{minipage}{0.94\linewidth}
+\PosterHeading{Visual evidence}\vspace{3mm}{\PosterBody\input{sections/study.tex}\par}
+\end{minipage}\vspace{5mm}\end{minipage}}\par\vspace{8mm}
+\PosterGrid{
+\PosterBlock{Question}{\input{sections/introduction.tex}}
+\PosterBlock{Method}{\input{sections/methodology.tex}}
+\PosterBlock{Measured outcomes}{\input{sections/results.tex}}
+\PosterBlock{What to remember}{\input{sections/conclusions.tex}}
+\PosterBlock{References}{\input{sections/references.tex}}
+\PosterContactBlock
+}
 \end{document}

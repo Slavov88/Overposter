@@ -1,22 +1,26 @@
 \documentclass{article}
 \input{config.tex}
-\usepackage[paperwidth=\PosterWidth mm,paperheight=\PosterHeight mm,margin=30mm]{geometry}
-\usepackage{amsmath,amssymb,graphicx,xcolor,tikz}
-\pagestyle{empty}
-\definecolor{accent}{HTML}{173B63}
-\definecolor{pale}{HTML}{E8EEF4}
-\setlength{\parindent}{0pt}
-\newcommand{\heading}[1]{\par\vspace{8mm}{\color{accent}\fontsize{34}{39}\selectfont\bfseries #1}\par\vspace{3mm}\hrule\vspace{5mm}}
-\newcommand{\bodytext}{\fontsize{23}{29}\selectfont}
-\newcommand{\col}[1]{\begin{minipage}[t]{0.315\textwidth}\bodytext #1\end{minipage}}
+\usepackage[paperwidth=\PosterWidth mm,paperheight=\PosterHeight mm,margin=25mm]{geometry}
+\usepackage{xcolor}
+\definecolor{accent}{HTML}{23496C}
+\definecolor{ink}{HTML}{172B40}
+\input{poster-layout.tex}
+\newcommand{\PosterHeading}[1]{{\color{accent}\fontsize{\PosterHeadingSize pt}{42pt}\selectfont\bfseries #1}\par\hrule height 1.2pt}
 \begin{document}
-\IfFileExists{assets/logo.pdf}{\includegraphics[height=30mm]{assets/logo.pdf}\par\vspace{5mm}}{}
-{\color{accent}\fontsize{58}{65}\selectfont\bfseries\PosterTitle}\par\vspace{4mm}
-{\fontsize{29}{35}\selectfont\PosterSubtitle}\par\vspace{5mm}
-\ifx\PosterAuthors\empty\else{\fontsize{25}{30}\selectfont\PosterAuthors\ifx\PosterAffiliation\empty\else\quad $\cdot$ \quad\PosterAffiliation\fi}\par\fi\vspace{6mm}\hrule height 2pt\vspace{7mm}
-\col{\heading{Motivation and question}\input{sections/introduction.tex}\heading{Method}\input{sections/methodology.tex}}
-\hfill
-\col{\heading{Study design}\input{sections/study.tex}\heading{Results}\input{sections/results.tex}}
-\hfill
-\col{\heading{Interpretation}\input{sections/conclusions.tex}\heading{References and contact}\input{sections/references.tex}\par\vspace{9mm}\fbox{\begin{minipage}{0.91\linewidth}\centering\vspace{9mm}QR code placeholder\\\PosterPaperURL\vspace{9mm}\end{minipage}}\par\vspace{5mm}\PosterContact}
+\IfFileExists{assets/logo.pdf}{\noindent\includegraphics[height=25mm]{assets/logo.pdf}\par\vspace{4mm}}{}
+\noindent\begin{minipage}[c]{\linewidth}
+{\color{accent}\fontsize{\PosterTitleSize pt}{70pt}\selectfont\bfseries\PosterTitle\par}
+\vspace{3mm}{\fontsize{28}{35}\selectfont\PosterSubtitle\par}
+\vspace{5mm}\PosterMetadata
+\end{minipage}
+\par\vspace{5mm}{\color{accent}\hrule height 3pt}\vspace{7mm}
+\PosterGrid{
+\PosterBlock{Motivation and question}{\input{sections/introduction.tex}}
+\PosterBlock{Method}{\input{sections/methodology.tex}}
+\PosterBlock{Study design}{\input{sections/study.tex}}
+\PosterBlock{Results}{\input{sections/results.tex}}
+\PosterBlock{Interpretation}{\input{sections/conclusions.tex}}
+\PosterBlock{References}{\input{sections/references.tex}}
+\PosterContactBlock
+}
 \end{document}

@@ -7,6 +7,7 @@ import {
   FileCode2,
   FilePlus2,
   FolderOpen,
+  History,
   LoaderCircle,
   Moon,
   Play,
@@ -18,6 +19,8 @@ import {
   X,
 } from "lucide-react";
 import PdfPreview from "./PdfPreview";
+import PosterForm, { blankAuthor, blankAffiliation } from "./PosterForm";
+import VersionHistory from "./VersionHistory";
 import {
   api,
   fileUrl,
@@ -28,37 +31,18 @@ import {
   type Project,
 } from "./api";
 
-const templates = [
-  {
-    id: "academic-classic",
-    name: "Academic Classic",
-    description: "Quiet hierarchy for traditional research",
-    swatch: "classic",
-  },
-  {
-    id: "modern-ml",
-    name: "Modern ML",
-    description: "Strong title and highlighted findings",
-    swatch: "modern",
-  },
-  {
-    id: "visual-results",
-    name: "Visual Results",
-    description: "Figures lead the scientific story",
-    swatch: "visual",
-  },
-] as const;
 const defaultConfig: Config = {
+  formatVersion: 2,
   title: "Untitled research poster",
   subtitle: "",
-  authors: "",
-  affiliation: "",
+  authors: [],
+  affiliations: [],
   contact: "",
   paperUrl: "",
   size: "A1",
   orientation: "landscape",
   theme: "modern-ml",
-  columns: 3,
+  columns: 2,
   fontScale: 1,
 };
 const friendly = (error: unknown) =>
@@ -100,6 +84,7 @@ export default function App() {
     [showCreate, setShowCreate] = useState(false),
     [showSettings, setShowSettings] = useState(false),
     [showLog, setShowLog] = useState(false),
+    [showVersions, setShowVersions] = useState(false),
     [dark, setDark] = useState(
       localStorage.getItem("overposter-theme") === "dark",
     ),
@@ -390,108 +375,6 @@ export default function App() {
       setBusy(false);
     }
   }
-  const configFields = (value: Config, onChange: (v: Config) => void) => (
-    <div className="config-grid">
-      <label>
-        Poster title
-        <input
-          value={value.title}
-          onChange={(e) => onChange({ ...value, title: e.target.value })}
-        />
-      </label>
-      <label>
-        Subtitle
-        <input
-          value={value.subtitle}
-          onChange={(e) => onChange({ ...value, subtitle: e.target.value })}
-        />
-      </label>
-      <label>
-        Authors
-        <input
-          value={value.authors}
-          onChange={(e) => onChange({ ...value, authors: e.target.value })}
-        />
-      </label>
-      <label>
-        Affiliation
-        <input
-          value={value.affiliation}
-          onChange={(e) => onChange({ ...value, affiliation: e.target.value })}
-        />
-      </label>
-      <label>
-        Paper size
-        <select
-          value={value.size}
-          onChange={(e) =>
-            onChange({ ...value, size: e.target.value as Config["size"] })
-          }
-        >
-          <option>A1</option>
-          <option>A0</option>
-          <option value="custom">Custom</option>
-        </select>
-      </label>
-      <label>
-        Orientation
-        <select
-          value={value.orientation}
-          onChange={(e) =>
-            onChange({
-              ...value,
-              orientation: e.target.value as Config["orientation"],
-            })
-          }
-        >
-          <option value="landscape">Landscape</option>
-          <option value="portrait">Portrait</option>
-        </select>
-      </label>
-      {value.size === "custom" && (
-        <>
-          <label>
-            Width (mm)
-            <input
-              type="number"
-              min="200"
-              max="3000"
-              value={value.widthMm || ""}
-              onChange={(e) =>
-                onChange({ ...value, widthMm: Number(e.target.value) })
-              }
-            />
-          </label>
-          <label>
-            Height (mm)
-            <input
-              type="number"
-              min="200"
-              max="3000"
-              value={value.heightMm || ""}
-              onChange={(e) =>
-                onChange({ ...value, heightMm: Number(e.target.value) })
-              }
-            />
-          </label>
-        </>
-      )}
-      <label>
-        Contact
-        <input
-          value={value.contact}
-          onChange={(e) => onChange({ ...value, contact: e.target.value })}
-        />
-      </label>
-      <label>
-        Paper or project URL
-        <input
-          value={value.paperUrl}
-          onChange={(e) => onChange({ ...value, paperUrl: e.target.value })}
-        />
-      </label>
-    </div>
-  );
   return (
     <div className="app">
       <header className="topbar">
@@ -553,7 +436,7 @@ export default function App() {
                 <button
                   className="primary"
                   onClick={() => {
-                    setDraft(defaultConfig);
+                    setDraft({ ...defaultConfig, authors: [blankAuthor()], affiliations: [blankAffiliation()] });
                     setName("New research poster");
                     setShowCreate(true);
                   }}
@@ -692,6 +575,7 @@ export default function App() {
                 <Settings2 size={16} />
                 Poster settings
               </button>
+              <button onClick={() => setShowVersions(true)}><History size={16} />Version history</button>
               <button onClick={() => save().then(() => { location.href = `/api/projects/${active.id}/export`; }).catch((e) => setError(friendly(e)))}>
                 <Download size={16} />
                 Export source ZIP
@@ -807,97 +691,9 @@ export default function App() {
           </section>
         </main>
       )}
-      {showCreate && (
-        <div
-          className="modal-backdrop"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setShowCreate(false);
-          }}
-        >
-          <div className="modal create-modal">
-            <div className="modal-head">
-              <div>
-                <p className="eyebrow">NEW PROJECT</p>
-                <h2>Start a poster</h2>
-              </div>
-              <IconButton title="Close" onClick={() => setShowCreate(false)}>
-                <X size={19} />
-              </IconButton>
-            </div>
-            <label className="project-name">
-              Project name
-              <input value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
-            <h3>Choose a layout</h3>
-            <div className="template-list">
-              {templates.map((t) => (
-                <button
-                  className={draft.theme === t.id ? "active" : ""}
-                  key={t.id}
-                  onClick={() => setDraft({ ...draft, theme: t.id })}
-                >
-                  <span className={"template-swatch " + t.swatch} />
-                  <span>
-                    <strong>{t.name}</strong>
-                    <small>{t.description}</small>
-                  </span>
-                </button>
-              ))}
-            </div>
-            {configFields(draft, setDraft)}
-            <div className="modal-actions">
-              <button
-                className="secondary"
-                onClick={() => setShowCreate(false)}
-              >
-                Cancel
-              </button>
-              <button className="primary" disabled={busy} onClick={create}>
-                Create project
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {showSettings && (
-        <div
-          className="modal-backdrop"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setShowSettings(false);
-          }}
-        >
-          <div className="modal">
-            <div className="modal-head">
-              <div>
-                <p className="eyebrow">PRINT SETUP</p>
-                <h2>Poster settings</h2>
-              </div>
-              <IconButton title="Close" onClick={() => setShowSettings(false)}>
-                <X size={19} />
-              </IconButton>
-            </div>
-            <p className="hint">
-              Changes to size or title apply to the next compilation.
-            </p>
-            {configFields(draft, setDraft)}
-            <div className="modal-actions">
-              <button
-                className="secondary"
-                onClick={() => setShowSettings(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="primary"
-                disabled={busy}
-                onClick={updateConfig}
-              >
-                Save settings
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showCreate && <PosterForm mode="create" value={draft} onChange={setDraft} name={name} onNameChange={setName} busy={busy} onSubmit={create} onClose={() => setShowCreate(false)} />}
+      {showSettings && <PosterForm mode="settings" value={draft} onChange={setDraft} busy={busy} onSubmit={updateConfig} onClose={() => setShowSettings(false)} />}
+      {showVersions && active && <VersionHistory projectId={active.id} onClose={() => setShowVersions(false)} onBeforeAction={save} onRestored={async () => { const current = await api<Project>(`/projects/${active.id}`); setShowVersions(false); await open(current); }} />}
     </div>
   );
 }

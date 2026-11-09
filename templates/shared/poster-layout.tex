@@ -1,0 +1,35 @@
+\usepackage{amsmath,amssymb,graphicx,xcolor,tikz,multicol,qrcode,hyperref}
+\hypersetup{colorlinks=true,urlcolor=accent}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\columnsep}{12mm}
+\newcommand{\PosterBody}{\fontsize{\PosterBodySize pt}{\PosterBodyLeading pt}\selectfont}
+\newcommand{\PosterMetadata}{%
+  \ifx\PosterAuthors\empty\else
+    {\fontsize{30}{38}\selectfont\PosterAuthors\par}
+  \fi
+  \ifx\PosterAffiliation\empty\else
+    \vspace{3mm}{\fontsize{22}{29}\selectfont\PosterAffiliation\par}
+  \fi
+}
+\newcommand{\PosterBlock}[2]{%
+  \par\vspace{5mm}\noindent
+  \begin{minipage}{\linewidth}
+    \PosterHeading{#1}\par\vspace{3mm}
+    {\PosterBody #2\par}\vspace{3mm}
+  \end{minipage}\par
+}
+\newcommand{\PosterGrid}[1]{\begin{multicols}{\PosterColumns}#1\end{multicols}}
+\newcommand{\PosterContactBlock}{%
+  \ifx\PosterPaperURL\empty\else
+    \par\vspace{6mm}
+    \noindent\begin{minipage}[c]{39mm}\qrcode[height=35mm]{\PosterPaperURL}\end{minipage}%
+    \hspace{5mm}\begin{minipage}[c]{\dimexpr\linewidth-46mm\relax}
+      {\fontsize{21}{28}\selectfont Paper and supplementary material\par
+      \url{\PosterPaperURL}}
+    \end{minipage}\par
+  \fi
+  \ifx\PosterContact\empty\else
+    \par\vspace{4mm}{\fontsize{21}{28}\selectfont\PosterContact\par}
+  \fi
+}

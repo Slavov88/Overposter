@@ -1,8 +1,11 @@
+export type Affiliation = { id: string; institution: string; department: string; city: string; country: string; address: string };
+export type Author = { id: string; name: string; email: string; orcid: string; affiliationIds: string[]; corresponding: boolean; equalContribution: boolean };
 export type Config = {
+  formatVersion: 2;
   title: string;
   subtitle: string;
-  authors: string;
-  affiliation: string;
+  authors: Author[];
+  affiliations: Affiliation[];
   contact: string;
   paperUrl: string;
   size: "A0" | "A1" | "custom";
@@ -10,7 +13,7 @@ export type Config = {
   widthMm?: number;
   heightMm?: number;
   theme: "academic-classic" | "modern-ml" | "visual-results";
-  columns: number;
+  columns: 2 | 3 | 4;
   fontScale: number;
 };
 export type Project = {

@@ -1,10 +1,15 @@
 \begin{center}
-\begin{tikzpicture}[>=stealth,thick,scale=1.0]
-\node[draw,rounded corners,fill=white,minimum width=3.2cm,minimum height=1.4cm] (a) at (0,0) {Input image};
-\node[draw,rounded corners,fill=white,minimum width=3.8cm,minimum height=1.4cm] (b) at (5,0) {Classifier};
-\node[draw,rounded corners,fill=white,minimum width=3.8cm,minimum height=1.4cm] (c) at (10,0) {Confidence gate};
-\node[draw,rounded corners,fill=white,minimum width=3.7cm,minimum height=1.4cm] (d) at (15,0) {Review or release};
+\newlength{\SampleDiagramWidth}
+\setlength{\SampleDiagramWidth}{0.88\linewidth}
+\ifdim\SampleDiagramWidth>220mm\setlength{\SampleDiagramWidth}{220mm}\fi
+\resizebox{\SampleDiagramWidth}{!}{%
+\begin{tikzpicture}[>=stealth,thick,box/.style={draw=accent,rounded corners=4pt,fill=white,minimum width=5.4cm,minimum height=1.8cm,align=center}]
+\node[box] (a) at (0,0) {Input image};
+\node[box] (b) at (10,0) {Classifier};
+\node[box] (c) at (10,-4) {Confidence score};
+\node[box] (d) at (0,-4) {Review or release};
 \draw[->] (a)--(b);\draw[->] (b)--(c);\draw[->] (c)--(d);
-\end{tikzpicture}
+\end{tikzpicture}}
 \end{center}
+\textit{Figure 1.} Schematic workflow only; it does not depict a trained system.\par\vspace{4mm}
 Synthetic balanced test sets: 1,000 familiar and 1,000 shifted images. We report the percentage of errors flagged and the share of all images sent for review. No real dataset or trained model is represented.

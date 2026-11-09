@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import {
   mkdtemp,
   cp,
+  copyFile,
   mkdir,
   readFile,
   rename,
@@ -12,8 +13,9 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { sourceDir, listFiles, getProject, dataDir } from "./projects.js";
+import { sourceDir, listFiles, getProject, dataDir, root } from "./projects.js";
 import { preflight, type PreflightReport } from "./preflight.js";
+import { configTex, parsePosterConfig } from "./model.js";
 
 export type BuildResult = {
   ok: boolean;
@@ -67,10 +69,19 @@ export async function buildSource(
   const staging = await mkdtemp(join(tmpdir(), "overposter-"));
   try {
     await cp(source, staging, { recursive: true });
+    try {
+      await stat(join(staging, "poster-layout.tex"));
+    } catch {
+      await copyFile(join(root, "templates", "shared", "poster-layout.tex"), join(staging, "poster-layout.tex"));
+    }
+    try {
+      const c = parsePosterConfig(JSON.parse(await readFile(join(staging, "poster.json"), "utf8")));
+      await writeFile(join(staging, "config.tex"), configTex(c));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
     await mkdir(join(staging, "out"));
-    let run = await runCommand(
-        "xelatex",
-        [
+    const xelatexArgs = [
           "-no-pdf",
           "-interaction=nonstopmode",
           "-halt-on-error",
@@ -78,10 +89,15 @@ export async function buildSource(
           "-no-shell-escape",
           "-output-directory=out",
           "poster.tex",
-        ],
-        120000,
-        staging,
-      );
+        ];
+    let run = await runCommand("xelatex", xelatexArgs, 120000, staging);
+    if (run.code !== 0 && !run.timedOut &&
+        run.log.includes("Sorry, but xelatex did not succeed") &&
+        run.log.includes("unsupported version of Windows") &&
+        !run.log.includes("poster.tex:")) {
+      const retry = await runCommand("xelatex", xelatexArgs, 120000, staging);
+      run = { ...retry, log: "MiKTeX startup failed once; retried real XeLaTeX.\n" + retry.log };
+    }
     if (run.code === 0) {
         const final = await runCommand(
           "xdvipdfmx",
@@ -175,6 +191,7 @@ export async function buildProject(id: string): Promise<BuildResult> {
     join(source, "poster.json"),
     JSON.stringify(project.config, null, 2),
   );
+  await writeFile(join(source, "config.tex"), configTex(project.config));
   const hash = createHash("sha256").update(JSON.stringify(project.config));
   for (const file of await listFiles(id))
     hash.update(file).update(await readFile(join(source, file)));

@@ -1,4 +1,4 @@
-import { rm, mkdir, writeFile, cp } from "node:fs/promises";
+import { rm, mkdir, writeFile, cp, copyFile, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { buildSource, buildProject } from "../apps/server/src/compiler.js";
 import {
@@ -9,6 +9,7 @@ import {
 } from "../apps/server/src/projects.js";
 import {
   posterConfigSchema,
+  parsePosterConfig,
   configTex,
   defaults,
   templateIds,
@@ -52,13 +53,19 @@ async function main() {
         source: join(root, "templates", t),
       })),
       { name: "sample-ml-poster", source: sample },
+      ...templateIds.map((t) => ({ name: `gallery-${t}`, source: sample, theme: t })),
     ];
     for (const target of targets) {
       const temp = join(dataDir, "examples", target.name);
       await rm(temp, { recursive: true, force: true });
       await mkdir(temp, { recursive: true });
       await cp(target.source, temp, { recursive: true });
-      if (target.name !== "sample-ml-poster") {
+      if ("theme" in target && target.theme) {
+        await copyFile(join(root, "templates", target.theme, "poster.tex"), join(temp, "poster.tex"));
+        const c = parsePosterConfig(JSON.parse(await readFile(join(sample, "poster.json"), "utf8")));
+        await writeFile(join(temp, "poster.json"), JSON.stringify({ ...c, theme: target.theme, columns: target.theme === "modern-ml" ? 2 : 3 }, null, 2));
+      }
+      if (target.name !== "sample-ml-poster" && !("theme" in target)) {
         const c = posterConfigSchema.parse({
           ...defaults,
           theme: target.name,
