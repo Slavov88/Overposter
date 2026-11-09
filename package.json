@@ -13,6 +13,7 @@
     "poster:export": "tsx scripts/poster.ts export",
     "examples:build": "tsx scripts/poster.ts examples",
     "test": "vitest run",
+    "test:e2e": "pnpm build && playwright test",
     "typecheck": "tsc --noEmit && pnpm --filter @overposter/web typecheck",
     "lint": "eslint .",
     "build": "pnpm --filter @overposter/web build"
@@ -25,6 +26,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@testing-library/react": "16.3.0",
     "@types/node": "^24.10.0",
     "concurrently": "^9.2.1",

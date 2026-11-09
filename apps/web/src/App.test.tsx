@@ -10,7 +10,7 @@ import {
 } from "@testing-library/react";
 vi.mock("./PdfPreview", () => ({ default: () => null }));
 import App from "./App";
-import { safeRenderScale } from "./previewScale";
+import { safeRenderScale, visibleTiles } from "./previewScale";
 
 afterEach(() => {
   cleanup();
@@ -43,4 +43,11 @@ it("caps large poster canvases to a bounded pixel budget", () => {
   const scale = safeRenderScale(8500, 8500);
   expect(8500 * scale).toBeLessThanOrEqual(4096);
   expect(8500 * 8500 * scale * scale).toBeLessThanOrEqual(12_000_000);
+});
+it("renders only bounded visible tiles at high zoom", () => {
+  const tiles = visibleTiles(12000, 9000, 5300, 3800, 1100, 800);
+  expect(tiles.length).toBeGreaterThan(0);
+  expect(tiles.length).toBeLessThanOrEqual(24);
+  expect(tiles.every((tile) => tile.width <= 512 && tile.height <= 512)).toBe(true);
+  expect(tiles.every((tile) => tile.x + tile.width >= 4788 && tile.x <= 6912)).toBe(true);
 });
