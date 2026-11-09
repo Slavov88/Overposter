@@ -25,7 +25,7 @@ import { posterConfigPatchSchema } from "./model.js";
 import { z } from "zod";
 import { checkpoint, listVersions, readVersionFile, restoreVersion, versionDiff } from "./versions.js";
 import { createHash } from "node:crypto";
-import { createAccess, deleteAccess, listMembers, requireRole, roleFor, setMember, testHosted, testSubject, type Role } from "./access.js";
+import { createAccess, deleteAccess, listMembers, requireRole, roleFor, setMember, testHosted, testSubject, validTestSubject, type Role } from "./access.js";
 import { closeProject, closeRevoked, flushProject, registerCollaboration, reloadAfterRestore, replaceFromRest } from "./collaboration.js";
 
 if (process.env.OVERPOSTER_MODE === "hosted")
@@ -59,7 +59,7 @@ app.addHook("onRequest", async (request, reply) => {
 });
 app.addHook("preHandler", async (request) => {
   if (!testHosted || !request.url.startsWith("/api/")) return;
-  if (request.url.startsWith("/api/health") || request.url.startsWith("/api/templates")) return;
+  if (request.url.startsWith("/api/health") || request.url.startsWith("/api/templates") || request.url.startsWith("/api/test-session")) return;
   const subject = testSubject(request);
   const match = /^\/api\/projects\/([a-f0-9-]{36})(?:[/?]|$)/.exec(request.url);
   if (!match) return;
@@ -80,6 +80,14 @@ app.setErrorHandler((error, request, reply) => {
     .send({ error: err.message });
 });
 app.get("/api/health", async () => ({ ok: true, version: "0.1.0" }));
+app.get("/api/session", async (request) => ({ mode: testHosted ? "test-hosted" : "local", subject: testSubject(request) }));
+app.post("/api/test-session", async (request, reply) => {
+  if (!testHosted) return reply.code(404).send({ error: "Not found" });
+  const { subject } = z.object({ subject: z.string() }).parse(request.body);
+  if (!validTestSubject(subject)) return reply.code(400).send({ error: "Invalid test subject" });
+  reply.header("Set-Cookie", `overposter_test_subject=${encodeURIComponent(subject)}; HttpOnly; SameSite=Strict; Path=/`);
+  return { subject };
+});
 app.get("/api/templates", async () => templateIds);
 app.get("/api/projects", async (request) => {
   const projects = await listProjects();
@@ -107,6 +115,7 @@ app.post("/api/import", async (request) => {
   return project;
 });
 app.get<{ Params: { id: string } }>("/api/projects/:id/members", async (request) => listMembers(request.params.id));
+app.get<{ Params: { id: string } }>("/api/projects/:id/role", async (request) => ({ role: await roleFor(request.params.id, testSubject(request)) }));
 app.put<{ Params: { id: string; subject: string } }>("/api/projects/:id/members/:subject", async (request) => {
   const { role } = z.object({ role: z.enum(["editor", "viewer"]) }).parse(request.body);
   await setMember(request.params.id, request.params.subject, role);

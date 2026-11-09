@@ -83,6 +83,13 @@ describe("loopback collaborative test mode", () => {
     projectId = ((await created.json()) as { id: string }).id;
     expect((await api(`/api/projects/${projectId}`, "outsider")).status).toBe(403);
     expect((await fetch(base + `/api/projects/${projectId}`)).status).toBe(401);
+    const login = await fetch(base + "/api/test-session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subject: "alice" }) });
+    expect(login.ok).toBe(true);
+    const cookie = login.headers.get("set-cookie")?.split(";")[0];
+    expect(cookie).toContain("overposter_test_subject=alice");
+    expect((await fetch(base + "/api/session", { headers: { Cookie: cookie! } })).status).toBe(200);
+    expect((await fetch(base + `/api/projects/${projectId}/role`, { headers: { Cookie: cookie! } })).status).toBe(200);
+    expect((await fetch(base + "/api/test-session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subject: "../bob" }) })).status).toBe(400);
     expect((await (await api("/api/projects", "outsider")).json()) as unknown[]).toHaveLength(0);
     expect((await api(`/api/projects/${projectId}/file?path=poster.tex`, "outsider")).status).toBe(403);
     expect((await api(`/api/projects/${projectId}/export`, "outsider")).status).toBe(403);

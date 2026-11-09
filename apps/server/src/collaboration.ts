@@ -129,6 +129,8 @@ export async function registerCollaboration(app: FastifyInstance): Promise<void>
         const client: Client = { socket, subject };
         state.clients.add(client);
         socket.send(Y.encodeStateAsUpdate(state.doc));
+        for (const peer of state.clients)
+          if (peer !== client) socket.send(JSON.stringify({ type: "presence", subject: peer.subject, connected: true }));
         broadcast(state, JSON.stringify({ type: "presence", subject, connected: true }), socket);
         return { state, client };
       })();
@@ -150,6 +152,7 @@ export async function registerCollaboration(app: FastifyInstance): Promise<void>
           Y.applyUpdate(state.doc, bytes);
           await queuePersist(state);
           broadcast(state, bytes, socket);
+          socket.send(JSON.stringify({ type: "saved" }));
         } catch { socket.close(1008, "Invalid shared update"); }
       });
       socket.on("close", () => {

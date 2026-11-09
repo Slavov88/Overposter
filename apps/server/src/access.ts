@@ -12,11 +12,14 @@ const validSubject = (value: string) => /^[a-z][a-z0-9_.-]{0,63}$/i.test(value) 
 
 export function testSubject(request: FastifyRequest): string {
   if (!testHosted) return "local";
-  const value = request.headers["x-overposter-test-subject"];
+  const cookie = request.headers.cookie?.split(";").map((part) => part.trim()).find((part) => part.startsWith("overposter_test_subject="));
+  const value = request.headers["x-overposter-test-subject"] ?? (cookie ? decodeURIComponent(cookie.slice("overposter_test_subject=".length)) : undefined);
   if (typeof value !== "string" || !validSubject(value))
     throw Object.assign(new Error("A test identity is required"), { statusCode: 401 });
   return value;
 }
+
+export function validTestSubject(value: string): boolean { return validSubject(value); }
 
 function accessPath(id: string): string {
   if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error("Invalid project ID");
