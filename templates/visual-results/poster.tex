@@ -1,0 +1,22 @@
+\documentclass{article}
+\input{config.tex}
+\usepackage[paperwidth=\PosterWidth mm,paperheight=\PosterHeight mm,margin=25mm]{geometry}
+\usepackage{amsmath,amssymb,graphicx,xcolor,tikz}
+\pagestyle{empty}
+\definecolor{ink}{HTML}{232B39}
+\definecolor{accent}{HTML}{C8533E}
+\definecolor{mist}{HTML}{F8EEE9}
+\setlength{\parindent}{0pt}
+\newcommand{\labelhead}[1]{\par{\color{accent}\fontsize{31}{37}\selectfont\bfseries #1}\par\vspace{5mm}}
+\newcommand{\copytext}{\fontsize{23}{29}\selectfont}
+\begin{document}
+\IfFileExists{assets/logo.pdf}{\includegraphics[height=30mm]{assets/logo.pdf}\par\vspace{5mm}}{}
+{\color{accent}\rule{\linewidth}{3mm}}\par\vspace{5mm}
+{\color{ink}\fontsize{65}{72}\selectfont\bfseries\PosterTitle}\par\vspace{4mm}
+{\fontsize{28}{34}\selectfont\PosterSubtitle}\par\vspace{4mm}
+\ifx\PosterAuthors\empty\else{\fontsize{23}{29}\selectfont\PosterAuthors\ifx\PosterAffiliation\empty\else\quad / \quad\PosterAffiliation\fi}\par\fi\vspace{10mm}
+\colorbox{mist}{\parbox{0.97\textwidth}{\vspace{5mm}\hspace{8mm}\begin{minipage}{0.92\linewidth}\labelhead{The visual story}\copytext\input{sections/study.tex}\end{minipage}\vspace{5mm}}}\par\vspace{8mm}
+\begin{minipage}[t]{0.31\textwidth}\labelhead{The question}\copytext\input{sections/introduction.tex}\vspace{7mm}\labelhead{Method}\copytext\input{sections/methodology.tex}\end{minipage}\hfill
+\begin{minipage}[t]{0.31\textwidth}\labelhead{Measured outcomes}\copytext\input{sections/results.tex}\end{minipage}\hfill
+\begin{minipage}[t]{0.31\textwidth}\labelhead{What to remember}\copytext\input{sections/conclusions.tex}\vspace{8mm}\labelhead{Sources and contact}\copytext\input{sections/references.tex}\par\vspace{5mm}\fbox{\parbox{0.90\linewidth}{\centering\vspace{7mm}QR code placeholder\\\PosterPaperURL\vspace{7mm}}}\par\PosterContact\end{minipage}
+\end{document}

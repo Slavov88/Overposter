@@ -1,0 +1,3 @@
+We compare raw softmax confidence with a temperature-scaled score and a distance signal. A case is flagged when $s(x)<\tau$, where
+\[s(x)=\alpha\max_k p_T(k\mid x)+(1-\alpha)(1-d(x)).\]
+The illustrative protocol fixes $\alpha=0.6$ and varies $\tau$. Real use requires a held-out calibration set and an independently collected shift set.

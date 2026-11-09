@@ -1,0 +1,18 @@
+\textbf{Illustrative data only (synthetic).}\par\vspace{4mm}
+\begin{tabular}{lrr}
+Signal & Errors flagged & Review share\\\hline
+Raw confidence & 61\% & 24\%\\
+Calibrated & 72\% & 27\%\\
+Combined & 79\% & 30\%
+\end{tabular}
+\par\vspace{8mm}
+\begin{tikzpicture}[x=0.36cm,y=0.16cm]
+\draw[->] (0,0)--(48,0);\draw[->] (0,0)--(0,88);
+\fill[accent] (5,0) rectangle (14,61);
+\fill[accent!65] (19,0) rectangle (28,72);
+\fill[accent!35] (33,0) rectangle (42,79);
+\node[rotate=35,anchor=north east] at (11,-2) {Raw};
+\node[rotate=35,anchor=north east] at (25,-2) {Calibrated};
+\node[rotate=35,anchor=north east] at (39,-2) {Combined};
+\node[anchor=west] at (1,84) {Errors flagged (\%)};
+\end{tikzpicture}

@@ -1,0 +1,14 @@
+node_modules/
+apps/web/dist/
+.overposter/
+.reference-overroot/
+*.log
+*.pdf
+*.aux
+*.xdv
+*.synctex.gz
+*.out
+*.fdb_latexmk
+*.fls
+*.tsbuildinfo
+!.github/**

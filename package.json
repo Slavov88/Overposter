@@ -1,0 +1,39 @@
+{
+  "name": "overposter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "poster:dev": "concurrently -k \"pnpm --filter @overposter/server dev\" \"pnpm --filter @overposter/web dev\"",
+    "poster:build": "tsx scripts/poster.ts build",
+    "poster:check": "tsx scripts/poster.ts check",
+    "poster:clean": "tsx scripts/poster.ts clean",
+    "poster:new": "tsx scripts/poster.ts new",
+    "poster:export": "tsx scripts/poster.ts export",
+    "examples:build": "tsx scripts/poster.ts examples",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && pnpm --filter @overposter/web typecheck",
+    "lint": "eslint .",
+    "build": "pnpm --filter @overposter/web build"
+  },
+  "dependencies": {
+    "@fastify/multipart": "^9.2.1",
+    "@fastify/static": "^8.3.0",
+    "@zip.js/zip.js": "^2.8.10",
+    "fastify": "^5.6.2",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@testing-library/react": "16.3.0",
+    "@types/node": "^24.10.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.1",
+    "jsdom": "26.1.0",
+    "prettier": "3.6.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "8.46.4",
+    "vitest": "^3.2.4"
+  }
+}

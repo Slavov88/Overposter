@@ -1,0 +1,10 @@
+\begin{center}
+\begin{tikzpicture}[>=stealth,thick,scale=1.0]
+\node[draw,rounded corners,fill=white,minimum width=3.2cm,minimum height=1.4cm] (a) at (0,0) {Input image};
+\node[draw,rounded corners,fill=white,minimum width=3.8cm,minimum height=1.4cm] (b) at (5,0) {Classifier};
+\node[draw,rounded corners,fill=white,minimum width=3.8cm,minimum height=1.4cm] (c) at (10,0) {Confidence gate};
+\node[draw,rounded corners,fill=white,minimum width=3.7cm,minimum height=1.4cm] (d) at (15,0) {Review or release};
+\draw[->] (a)--(b);\draw[->] (b)--(c);\draw[->] (c)--(d);
+\end{tikzpicture}
+\end{center}
+Synthetic balanced test sets: 1,000 familiar and 1,000 shifted images. We report the percentage of errors flagged and the share of all images sent for review. No real dataset or trained model is represented.

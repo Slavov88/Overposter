@@ -1,0 +1,27 @@
+\documentclass{article}
+\input{config.tex}
+\usepackage[paperwidth=\PosterWidth mm,paperheight=\PosterHeight mm,margin=25mm]{geometry}
+\usepackage{amsmath,amssymb,graphicx,xcolor,tikz}
+\pagestyle{empty}
+\definecolor{ink}{HTML}{14213D}
+\definecolor{accent}{HTML}{126D78}
+\definecolor{soft}{HTML}{E7F2F1}
+\setlength{\parindent}{0pt}
+\newcommand{\card}[2]{\vspace{8mm}\colorbox{soft}{\parbox{0.94\linewidth}{\vspace{7mm}{\color{accent}\fontsize{39}{46}\selectfont\bfseries #1}\par\vspace{7mm}{\color{ink}\fontsize{29}{37}\selectfont #2}\vspace{7mm}}}\par}
+\begin{document}
+\IfFileExists{assets/logo.pdf}{\includegraphics[height=30mm]{assets/logo.pdf}\par\vspace{5mm}}{}
+\colorbox{ink}{\parbox{0.97\textwidth}{\vspace{11mm}\hspace{7mm}{\color{white}\fontsize{76}{84}\selectfont\bfseries\PosterTitle}\par\vspace{5mm}\hspace{7mm}{\color{white}\fontsize{35}{42}\selectfont\PosterSubtitle}\par\vspace{8mm}\ifx\PosterAuthors\empty\else\hspace{7mm}{\color{white}\fontsize{29}{35}\selectfont\PosterAuthors\ifx\PosterAffiliation\empty\else\quad\textbar\quad\PosterAffiliation\fi}\fi\vspace{10mm}}}\par\vspace{8mm}
+\begin{minipage}[t]{0.31\textwidth}
+\card{01 / Why it matters}{\input{sections/introduction.tex}}
+\card{02 / Approach}{\input{sections/methodology.tex}}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.31\textwidth}
+\card{03 / Experimental setup}{\input{sections/study.tex}}
+\card{04 / Results}{\input{sections/results.tex}}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.31\textwidth}
+\card{Takeaway}{\input{sections/conclusions.tex}}
+\card{Further reading}{\input{sections/references.tex}}
+\vspace{12mm}{\color{ink}\fontsize{27}{34}\selectfont\fbox{\parbox{0.88\linewidth}{\centering\vspace{10mm}QR code placeholder\\\PosterPaperURL\vspace{10mm}}}\par\vspace{9mm}\PosterContact}
+\end{minipage}
+\end{document}
