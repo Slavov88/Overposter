@@ -137,6 +137,7 @@ export async function deleteProject(id: string) {
     rm(output + ".sha256", { force: true }),
     rm(output + ".preflight.json", { force: true }),
     rm(join(dataDir, "versions", `${id}.git`), { recursive: true, force: true }),
+    rm(join(dataDir, "collaboration", id), { recursive: true, force: true }),
   ]);
 }
 export async function listFiles(id: string): Promise<string[]> {
@@ -164,6 +165,7 @@ export async function writeProjectFile(
   path: string,
   data: Buffer | string,
 ): Promise<void> {
+  await getProject(id);
   const base = filesDir(id);
   const full = within(base, safePath(path));
   if (path === "config.tex")
@@ -185,7 +187,7 @@ export async function writeProjectFile(
   await writeFile(full, data);
 }
 export async function trustImportedProject(id: string): Promise<Project> {
-  if (process.env.OVERPOSTER_MODE === "hosted")
+  if (process.env.OVERPOSTER_MODE && process.env.OVERPOSTER_MODE !== "local")
     throw new Error("Imported source cannot be trusted for direct compilation in hosted mode");
   const project = await getProject(id);
   if (!project.imported) throw new Error("Only imported projects need approval");

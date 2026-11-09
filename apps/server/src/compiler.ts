@@ -173,7 +173,7 @@ export async function buildSource(
 }
 export async function buildProject(id: string): Promise<BuildResult> {
   const project = await getProject(id);
-  if (process.env.OVERPOSTER_MODE === "hosted")
+  if (process.env.OVERPOSTER_MODE && process.env.OVERPOSTER_MODE !== "local")
     return {
       ok: false,
       log: "Hosted compilation is disabled until an isolated TeX worker is configured and verified.",

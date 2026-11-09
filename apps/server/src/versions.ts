@@ -39,10 +39,10 @@ async function git(id: string, args: string[]): Promise<string> {
     ...args,
   ], 30000);
   if (result.code !== 0) throw new Error("Version operation failed: " + result.log);
-  return result.log.trim();
+  return result.log;
 }
 async function head(id: string): Promise<string | null> {
-  try { return await git(id, ["rev-parse", "HEAD"]); } catch { return null; }
+  try { return (await git(id, ["rev-parse", "HEAD"])).trim(); } catch { return null; }
 }
 async function checkpointUnlocked(id: string, message: string): Promise<string> {
   const project = await getProject(id);
