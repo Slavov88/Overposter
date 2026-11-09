@@ -5,7 +5,7 @@ Overposter is a local studio for designing and compiling large-format research p
 ## Requirements
 
 - Node.js 24, pnpm 11, Python 3.11 or newer
-- Docker Desktop on Windows, or Docker Engine on Linux/macOS
+- A local XeLaTeX installation with `xelatex` and `xdvipdfmx` on `PATH` (MiKTeX on Windows or TeX Live on Linux/macOS)
 - Python package `pymupdf==1.28.2`
 
 ```bash
@@ -14,9 +14,9 @@ pnpm install
 pnpm poster:dev
 ```
 
-Open `http://127.0.0.1:5173`. Docker Desktop must be running before compilation. The service binds to the local loopback address. The browser stores projects in `.overposter/projects/` and outputs in `.overposter/builds/`.
+Open `http://127.0.0.1:5173`. The service binds to the local loopback address. The browser stores projects in `.overposter/projects/` and outputs in `.overposter/builds/`.
 
-The first Docker build downloads a pinned Tectonic binary and its TeX package bundle. Later compilations run in a temporary directory inside a restricted container without a network connection. No login is required.
+The default compiler runs local XeLaTeX followed by `xdvipdfmx` in a temporary directory, with shell escape disabled. No login or Docker installation is required for projects created in the app. Imported ZIP projects require the isolated Docker compiler; start the server with `OVERPOSTER_COMPILER=docker` to compile those projects.
 
 ## Make a poster
 
@@ -43,7 +43,7 @@ pnpm poster:clean                         # generated PDFs only
 
 The build command fails if TeX fails, the PDF has more than one page, or its measured size differs from the requested size by more than 0.5 mm. It writes `<poster.pdf>.preflight.json` beside a successful PDF. `poster:check` prints a readable summary; `--json` prints the full machine-readable report and `--out` saves it. Preflight checks font embedding and effective DPI of raster images and gives warnings for uncertain print issues. It cannot prove that all content is aesthetically aligned or detect every clipped vector graphic.
 
-For a trusted local checkout only, `OVERPOSTER_COMPILER=local` uses an installed `xelatex` and `xdvipdfmx` for development. Imported or untrusted projects must use Docker, which is the default and the CI compiler.
+Local compilation is intended for poster source you trust. To use the Docker compiler explicitly, set `OVERPOSTER_COMPILER=docker`. CI uses that setting and downloads a pinned Tectonic binary and TeX package bundle for its isolated builds.
 
 ## Source format
 
