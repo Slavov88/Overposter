@@ -5,8 +5,7 @@ export const templateIds = [
   "modern-ml",
   "visual-results",
 ] as const;
-export const posterConfigSchema = z
-  .object({
+const posterConfigFields = z.object({
     title: z.string().trim().min(1).max(180),
     subtitle: z.string().max(240).default(""),
     authors: z.string().max(300).default(""),
@@ -20,14 +19,15 @@ export const posterConfigSchema = z
     theme: z.enum(templateIds).default("modern-ml"),
     columns: z.literal(3).default(3),
     fontScale: z.literal(1).default(1),
-  })
-  .superRefine((v, ctx) => {
+  });
+export const posterConfigPatchSchema = posterConfigFields.partial();
+export const posterConfigSchema = posterConfigFields.superRefine((v, ctx) => {
     if (v.size === "custom" && (!v.widthMm || !v.heightMm))
       ctx.addIssue({
         code: "custom",
         message: "Custom size needs widthMm and heightMm",
       });
-  });
+});
 export type PosterConfig = z.infer<typeof posterConfigSchema>;
 export const defaults: PosterConfig = {
   title: "Untitled research poster",

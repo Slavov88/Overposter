@@ -13,6 +13,7 @@ import {
   dimensions,
   mmToPt,
   posterConfigSchema,
+  posterConfigPatchSchema,
   safePath,
 } from "../apps/server/src/model.js";
 import {
@@ -40,6 +41,10 @@ describe("poster model and files", () => {
     expect(mmToPt(25.4)).toBeCloseTo(72);
   });
   it("rejects incomplete custom settings and unsafe paths", () => {
+    expect(posterConfigPatchSchema.parse({ theme: "visual-results" })).toMatchObject({
+      theme: "visual-results",
+    });
+    expect(() => posterConfigPatchSchema.parse({ theme: "invalid" })).toThrow();
     expect(() =>
       posterConfigSchema.parse({ ...defaults, size: "custom" }),
     ).toThrow();

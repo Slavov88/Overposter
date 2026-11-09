@@ -19,7 +19,7 @@ import {
   dataDir,
 } from "./projects.js";
 import { templateIds } from "./model.js";
-import { posterConfigSchema } from "./model.js";
+import { posterConfigPatchSchema } from "./model.js";
 import { z } from "zod";
 
 const app = Fastify({ logger: true, bodyLimit: 10_000_000 });
@@ -57,7 +57,7 @@ app.post("/api/projects", async (request) => {
   const body = z
     .object({
       name: z.string().trim().min(1).max(120),
-      config: posterConfigSchema.partial().optional(),
+      config: posterConfigPatchSchema.optional(),
     })
     .parse(request.body);
   return createProject(body.name, body.config || {});
