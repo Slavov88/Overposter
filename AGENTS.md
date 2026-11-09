@@ -1,6 +1,6 @@
 # Working in Overposter
 
-Overposter has a React/Vite interface in `apps/web`, a local API and compiler in `apps/server`, reusable LaTeX layouts in `templates`, and a CLI in `scripts/poster.ts`. Project source files live under `.overposter/projects/<id>/source` when created in the app. Examples are committed under `examples/`.
+Overposter has a React/Vite interface in `apps/web`, a local API and compiler in `apps/server`, reusable LaTeX layouts in `templates`, and a CLI in `scripts/poster.ts`. Project source files live under `.overposter/projects/<id>/source` when created in the app. Project version repositories live under `.overposter/versions/`. Examples are committed under `examples/`.
 
 To edit a poster:
 
