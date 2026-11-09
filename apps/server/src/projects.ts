@@ -121,6 +121,12 @@ export async function updateProject(
 }
 export async function deleteProject(id: string) {
   await rm(projectDir(id), { recursive: true });
+  const output = join(dataDir, "builds", `${id}.pdf`);
+  await Promise.all([
+    rm(output, { force: true }),
+    rm(output + ".sha256", { force: true }),
+    rm(output + ".preflight.json", { force: true }),
+  ]);
 }
 export async function listFiles(id: string): Promise<string[]> {
   const base = filesDir(id);

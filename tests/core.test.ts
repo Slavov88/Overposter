@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { readFile, rm } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import {
   BlobReader,
@@ -18,6 +18,7 @@ import {
 import {
   createProject,
   dataDir,
+  deleteProject,
   exportZip,
   importZip,
   listFiles,
@@ -28,8 +29,7 @@ import { buildProject, runCommand } from "../apps/server/src/compiler.js";
 
 const ids: string[] = [];
 afterAll(async () => {
-  for (const id of ids)
-    await rm(join(dataDir, "projects", id), { recursive: true, force: true });
+  for (const id of ids) await deleteProject(id);
 });
 describe("poster model and files", () => {
   it("converts standard and custom sizes", () => {
@@ -97,6 +97,18 @@ describe("poster model and files", () => {
     expect(await listFiles(project.id)).not.toContain(
       "sections/introduction.tex",
     );
+  });
+  it("deletes source and generated artifacts together", async () => {
+    const project = await createProject("Delete test");
+    const result = await buildProject(project.id);
+    expect(result.ok, result.log).toBe(true);
+    await deleteProject(project.id);
+    await expect(stat(result.pdfPath!)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(
+      stat(join(dataDir, "projects", project.id)),
+    ).rejects.toMatchObject({ code: "ENOENT" });
   });
 });
 describe("real compiler and preflight", () => {
