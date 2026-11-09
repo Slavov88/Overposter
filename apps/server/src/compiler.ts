@@ -25,6 +25,7 @@ export type BuildResult = {
   cached?: boolean;
 };
 const image = "overposter-tectonic:0.16.9";
+const useDocker = () => process.env.OVERPOSTER_COMPILER === "docker";
 export async function runCommand(
   exe: string,
   args: string[],
@@ -107,12 +108,12 @@ export async function buildSource(
   try {
     await cp(source, staging, { recursive: true });
     await mkdir(join(staging, "out"));
-    if (process.env.OVERPOSTER_COMPILER !== "local") {
+    if (useDocker()) {
       await chmod(staging, 0o777);
       await chmod(join(staging, "out"), 0o777);
     }
     let run: { code: number; log: string; timedOut: boolean };
-    if (process.env.OVERPOSTER_COMPILER === "local") {
+    if (!useDocker()) {
       run = await command(
         "xelatex",
         [
@@ -234,6 +235,12 @@ export async function buildSource(
 }
 export async function buildProject(id: string): Promise<BuildResult> {
   const project = await getProject(id);
+  if (project.imported && !useDocker())
+    return {
+      ok: false,
+      log: "Imported projects require the Docker compiler. Set OVERPOSTER_COMPILER=docker to build this project.",
+      durationMs: 0,
+    };
   const source = await sourceDir(id);
   const output = join(dataDir, "builds", `${id}.pdf`);
   await writeFile(

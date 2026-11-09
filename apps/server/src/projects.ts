@@ -41,6 +41,7 @@ export type Project = {
   name: string;
   config: PosterConfig;
   updatedAt: string;
+  imported?: boolean;
 };
 const projectDir = (id: string) => {
   if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error("Invalid project ID");
@@ -198,6 +199,11 @@ export async function importZip(
       JSON.parse(new TextDecoder().decode(contents.get("poster.json"))),
     );
   const project = await createProject(name, { ...config }, false);
+  project.imported = true;
+  await writeFile(
+    join(projectDir(project.id), "project.json"),
+    JSON.stringify(project, null, 2) + "\n",
+  );
   for (const [path, data] of contents) {
     if (path === "config.tex" || path === "poster.json") continue;
     await writeProjectFile(project.id, path, Buffer.from(data));

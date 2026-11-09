@@ -73,6 +73,12 @@ describe("poster model and files", () => {
     await reader.close();
     const imported = await importZip("Imported", zip);
     ids.push(imported.id);
+    expect(imported.imported).toBe(true);
+    if (process.env.OVERPOSTER_COMPILER !== "docker") {
+      const build = await buildProject(imported.id);
+      expect(build.ok).toBe(false);
+      expect(build.log).toContain("Imported projects require the Docker compiler");
+    }
     expect(await readProjectFile(imported.id, "figures/pixels.bin")).toEqual(
       Buffer.from([0, 255, 128]),
     );
