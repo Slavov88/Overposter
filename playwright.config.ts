@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: "**/*.e2e.ts",
+  testMatch: "**/poster.e2e.ts",
   timeout: 120_000,
   expect: { timeout: 20_000 },
   use: {

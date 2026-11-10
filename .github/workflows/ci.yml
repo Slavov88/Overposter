@@ -27,6 +27,7 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+      - run: pnpm test:collab:e2e
       - run: pnpm examples:build
       - run: python scripts/check_qr.py .overposter/builds/sample-ml-poster.pdf examples/sample-ml-poster/poster.json
       - uses: actions/upload-artifact@v4
