@@ -1,6 +1,6 @@
 # Hosted collaboration boundary
 
-Public hosted collaboration is not enabled. `OVERPOSTER_MODE=hosted` fails startup. The local API still binds to loopback, and it has no site account sessions or isolated compiler worker.
+Public hosted collaboration is not enabled. `OVERPOSTER_MODE=hosted` fails startup. The local API still binds to loopback, and it has no site account sessions. A standalone Linux sandbox worker prototype can be exercised separately; it is not connected to the API.
 
 ## Test-only foundation
 
@@ -16,7 +16,7 @@ The browser editor now uses Yjs in test mode, shows collaborator names and curso
 
 The planned account adapter needs a separate `overposter` grant, validated issuer and immutable subject, server-side sessions, state/PKCE where required, and CSRF protection. Membership remains project specific; every REST route, PDF/download route and WebSocket join/update must check it. Revocation must disconnect affected sockets.
 
-Hosted TeX needs a separate unprivileged VM or restricted Linux worker with no network, per-job mounts, CPU/RAM/time quotas, cancellation, limited concurrency, a secret-free environment, redacted logs, pinned source revision and authenticated artifact delivery. The web server must have no fallback to direct local XeLaTeX. This isolation and its adversarial tests are not yet implemented.
+Hosted TeX needs a separate unprivileged VM or restricted Linux worker with no network, per-job mounts, CPU/RAM/time quotas, cancellation, limited concurrency, a secret-free environment, redacted logs, pinned source revision and authenticated artifact delivery. The web server must have no fallback to direct local XeLaTeX. The standalone `pnpm worker:run <source.zip> <sha256> <private-artifact-dir>` prototype verifies a SHA-256 pinned ZIP, rejects unsafe entries, and uses `prlimit` plus bubblewrap with no network and narrow read-only mounts for XeLaTeX and xdvipdfmx. It returns only a bounded PDF and preflight report, with raw compiler logs suppressed. ZIP validation tests run locally; Linux CI is configured to exercise a real sandbox build. It is not an authenticated service, and host-level filesystem, concurrency, CPU/memory/disk and process controls need deployment validation before any public job can use it. Preflight executes on the dedicated worker host outside bubblewrap, so the host must contain no account secrets or project database.
 
 ## Manual cross-app reference
 
