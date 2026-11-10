@@ -4,7 +4,7 @@ Overposter is a local studio for designing and compiling large-format research p
 
 ## Requirements
 
-- Node.js 24, pnpm 11, Python 3.11 or newer
+- Node.js 24.12 or newer, pnpm 11, Python 3.11 or newer
 - A local XeLaTeX installation with `xelatex` and `xdvipdfmx` on `PATH` (MiKTeX on Windows or TeX Live on Linux/macOS)
 - Python package `pymupdf==1.28.2`
 
@@ -65,4 +65,6 @@ GitHub Actions installs TeX Live on Ubuntu, runs static checks and tests, builds
 
 Overposter currently runs as a standalone, single-user local application. The editor has conflict detection and recoverable local drafts, and project history supports checkpoints, diffs, and restore. Public hosted accounts, collaboration, and compilation are not yet available. A manual Overroot project reference can be saved per poster; it does not sync source or share access. See [Toni handoff](docs/TONI_HANDOFF.md) for the integration boundary and deployment prerequisites.
 
-The repository includes a guarded loopback test harness for project roles and persistent Yjs WebSocket edits. It is exercised by `tests/collaboration.test.ts` and a guarded two-browser test of the shared editor and project roles. Its test header and browser cookie are not real authentication and must never be used for public hosting.
+The repository includes a guarded loopback test harness for project roles in SQLite and persistent Yjs WebSocket edits. It is exercised by `tests/collaboration.test.ts` and a guarded two-browser test of the shared editor and project roles. Its test header and browser cookie are not real authentication and must never be used for public hosting.
+
+The test-mode membership migration and backup procedure is documented in [membership migration](docs/ACCESS_MIGRATION.md). The local single-user workspace does not need a membership database.
