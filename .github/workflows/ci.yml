@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends texlive-xetex texlive-latex-extra texlive-pictures texlive-fonts-recommended
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends texlive-xetex texlive-latex-extra texlive-pictures texlive-fonts-recommended bubblewrap util-linux
       - uses: pnpm/action-setup@v4
         with:
           version: 11.25.0
@@ -29,6 +29,7 @@ jobs:
       - run: pnpm test:e2e
       - run: pnpm test:collab:e2e
       - run: pnpm examples:build
+      - run: pnpm worker:verify
       - run: python scripts/check_qr.py .overposter/builds/sample-ml-poster.pdf examples/sample-ml-poster/poster.json
       - uses: actions/upload-artifact@v4
         with:
