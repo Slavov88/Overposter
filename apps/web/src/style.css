@@ -871,3 +871,11 @@ body {
 .share-error { color: #a0222d; }
 .online-peers { font-weight: 600; }
 .remote-cursor { display: inline-block; border-left: 2px solid #e05252; color: #fff; background: #a93444; padding: 0 3px; font: 10px/15px sans-serif; vertical-align: top; white-space: nowrap; }
+
+.linked-project, .link-form { display: grid; gap: 10px; margin: 18px 0; }
+.linked-project { padding: 14px; border: 1px solid var(--line); border-radius: 10px; }
+.linked-project a { color: var(--accent); font-weight: 700; }
+.linked-project small { line-height: 1.5; }
+.link-form label { display: grid; gap: 5px; }
+.link-form input { width: 100%; padding: 9px; }
+.link-actions { display: flex; gap: 10px; flex-wrap: wrap; }

@@ -8,6 +8,7 @@ import {
   FilePlus2,
   FolderOpen,
   History,
+  Link2,
   LoaderCircle,
   Moon,
   Play,
@@ -24,6 +25,7 @@ import PosterForm, { blankAuthor, blankAffiliation } from "./PosterForm";
 import VersionHistory from "./VersionHistory";
 import SharedEditor, { type SharedHandle, type SharedState } from "./SharedEditor";
 import SharePanel from "./SharePanel";
+import OverrootLinkPanel from "./OverrootLinkPanel";
 import {
   api,
   fileUrl,
@@ -89,6 +91,7 @@ export default function App() {
     [showLog, setShowLog] = useState(false),
     [showVersions, setShowVersions] = useState(false),
     [showShare, setShowShare] = useState(false),
+    [showLink, setShowLink] = useState(false),
     [session, setSession] = useState<{ mode: string; subject: string } | null>(null),
     [projectRole, setProjectRole] = useState<"owner" | "editor" | "viewer">("owner"),
     [sharedState, setSharedState] = useState<SharedState>("connecting"),
@@ -580,6 +583,7 @@ export default function App() {
               <input
                 ref={assetInput}
                 type="file"
+                accept=".pdf,.png,.jpg,.jpeg"
                 hidden
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -597,6 +601,7 @@ export default function App() {
                 Poster settings
               </button>}
               <button onClick={() => setShowVersions(true)}><History size={16} />Version history</button>
+              <button onClick={() => setShowLink(true)}><Link2 size={16} />Overroot link</button>
               {session?.mode === "test-hosted" && projectRole === "owner" && <button onClick={() => setShowShare(true)}><Users size={16} />Share project</button>}
               <button onClick={() => save().then(() => { location.href = `/api/projects/${active.id}/export`; }).catch((e) => setError(friendly(e)))}>
                 <Download size={16} />
@@ -615,7 +620,7 @@ export default function App() {
                 <h2>{active.name}</h2>
                 <span>
                   {active.config.size} · {active.config.orientation} ·{" "}
-                  {active.config.theme.replaceAll("-", " ")}
+                  {active.config.theme.replaceAll("-", " ")}{active.imported ? " · Imported ZIP source" : ""}
                 </span>
               </div>
               <div className="workspace-actions">
@@ -718,6 +723,7 @@ export default function App() {
       {showSettings && <PosterForm mode="settings" value={draft} onChange={setDraft} busy={busy} onSubmit={updateConfig} onClose={() => setShowSettings(false)} />}
       {showVersions && active && <VersionHistory projectId={active.id} readOnly={session?.mode === "test-hosted" && projectRole === "viewer"} onClose={() => setShowVersions(false)} onBeforeAction={save} onRestored={async () => { const current = await api<Project>(`/projects/${active.id}`); setShowVersions(false); await open(current); }} />}
       {showShare && active && <SharePanel projectId={active.id} onClose={() => setShowShare(false)} />}
+      {showLink && active && <OverrootLinkPanel projectId={active.id} canEdit={session?.mode !== "test-hosted" || projectRole === "owner"} onClose={() => setShowLink(false)} />}
     </div>
   );
 }

@@ -24,6 +24,12 @@ test("two authorized editors share source, presence, and permissions", async ({ 
     await alice.getByRole("combobox", { name: "Role" }).selectOption("viewer");
     await alice.getByRole("button", { name: "Add person" }).click();
     await alice.getByRole("button", { name: "Close sharing" }).click();
+    await alice.getByRole("button", { name: "Overroot link" }).click();
+    await alice.getByRole("textbox", { name: "Stable Overroot project ID" }).fill("research-42");
+    await alice.getByRole("textbox", { name: "Overroot project URL" }).fill("https://overroot.toni.foo/projects/research-42");
+    await alice.getByRole("button", { name: "Save link" }).click();
+    await expect(alice.getByRole("link", { name: "Open in Overroot" })).toHaveAttribute("href", "https://overroot.toni.foo/projects/research-42");
+    await alice.getByRole("button", { name: "Close project link" }).click();
     const bob = await collaborator.newPage();
     await bob.goto("/");
     await bob.getByRole("button", { name: new RegExp(project.name) }).click();
@@ -54,6 +60,10 @@ test("two authorized editors share source, presence, and permissions", async ({ 
     await carol.goto("/");
     await carol.getByRole("button", { name: new RegExp(project.name) }).click();
     await expect(carol.getByText("view only")).toBeVisible();
+    await carol.getByRole("button", { name: "Overroot link" }).click();
+    await expect(carol.getByRole("link", { name: "Open in Overroot" })).toBeVisible();
+    await expect(carol.getByRole("button", { name: "Save link" })).toHaveCount(0);
+    await carol.getByRole("button", { name: "Close project link" }).click();
     expect(await outsider.request.get(`/api/projects/${project.id}/file?path=poster.tex`).then((response) => response.status())).toBe(403);
     await bob.close(); await carol.close(); await alice.close();
   } finally {
