@@ -81,7 +81,7 @@ async function requireTool(name: string) {
   });
 }
 
-export async function runWorkerSandbox(executable: string, args: string[], source: string, output: string, signal?: AbortSignal) {
+export async function runWorkerSandbox(executable: string, args: string[], source: string, output: string, signal?: AbortSignal, diagnostics?: (text: string) => void) {
   // Bind only TeX's system tree and the current job. Never bind /, /home, /etc or application data.
   const mounts = ["/usr", "/bin", "/lib", "/lib64", "/etc/texmf", "/etc/fonts", "/var/lib/texmf"];
   const bwrap = ["--die-with-parent", "--new-session", "--unshare-all", "--proc", "/proc", "--dev", "/dev",
@@ -100,7 +100,7 @@ export async function runWorkerSandbox(executable: string, args: string[], sourc
     let ended = false;
     let reason: Error | undefined;
     // Do not return raw TeX logs: source text and filesystem details can be sensitive.
-    child.stderr.on("data", () => {});
+    child.stderr.on("data", (data) => { diagnostics?.(String(data).slice(0, 2000)); });
     const kill = () => {
       reason = new Error(signal?.aborted ? "Job cancelled" : "Worker time limit exceeded");
       try { process.kill(-child.pid!, "SIGKILL"); } catch { child.kill("SIGKILL"); }

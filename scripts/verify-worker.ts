@@ -32,8 +32,15 @@ try {
   const probeOutput = join(temp, "probe-output");
   await mkdir(probeSource);
   await mkdir(probeOutput);
-  if (await runWorkerSandbox("sh", ["-c", "test ! -e /etc/passwd && test ! -e /home && test $(wc -l </proc/net/route) -eq 1"], probeSource, probeOutput) !== 0)
-    throw new Error("Sandbox exposed host files or network routes");
+  for (const [name, command] of [
+    ["host passwd", "test ! -e /etc/passwd"],
+    ["host home", "test ! -e /home"],
+    ["network route", "test $(wc -l </proc/net/route) -eq 1"],
+  ]) {
+    const code = await runWorkerSandbox("sh", ["-c", command], probeSource, probeOutput, undefined,
+      (text) => process.stderr.write(text));
+    if (code !== 0) throw new Error(`Sandbox ${name} probe failed (exit ${code})`);
+  }
   const controller = new AbortController();
   const cancelled = runWorkerSandbox("sleep", ["30"], probeSource, probeOutput, controller.signal);
   setTimeout(() => controller.abort(), 100);
