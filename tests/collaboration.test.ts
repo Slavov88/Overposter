@@ -164,8 +164,8 @@ describe("loopback collaborative test mode", () => {
     expect((await (await api(`/api/projects/${projectId}/file?path=sections/results.tex`, "alice")).text())).toBe(original);
   }, 40_000);
 
-  it("refuses public hosted startup and an unguarded test identity mode", async () => {
-    for (const mode of ["hosted", "test-hosted"]) {
+  it("refuses public hosted startup, unguarded tests, and unknown identity modes", async () => {
+    for (const mode of ["hosted", "test-hosted", "unknown"]) {
       const child = spawn(process.execPath, ["--import", "tsx", "apps/server/src/index.ts"], {
         cwd: process.cwd(),
         env: { ...process.env, OVERPOSTER_MODE: mode, OVERPOSTER_TEST_IDENTITIES: "", NODE_ENV: "production" },

@@ -4,7 +4,8 @@ import { join } from "node:path";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type WebSocket from "ws";
 import * as Y from "yjs";
-import { requireRole, roleFor, testHosted, testSubject } from "./access.js";
+import { requireRole, roleFor } from "./access.js";
+import { subjectForRequest, testHosted } from "./identity.js";
 import { dataDir, readProjectFile, writeProjectFile } from "./projects.js";
 import { safePath } from "./model.js";
 
@@ -122,7 +123,7 @@ export async function registerCollaboration(app: FastifyInstance): Promise<void>
     (socket, request: FastifyRequest<{ Params: { id: string }; Querystring: { path: string } }>) => {
       if (!testHosted) { socket.close(1008, "Shared editing is unavailable in local mode"); return; }
       const ready = (async () => {
-        const subject = testSubject(request);
+        const subject = await subjectForRequest(request);
         await requireRole(request.params.id, subject, "viewer");
         const path = textPath(request.query.path);
         const state = await documentFor(request.params.id, path);

@@ -25,7 +25,8 @@ import { posterConfigPatchSchema } from "./model.js";
 import { z } from "zod";
 import { checkpoint, listVersions, readVersionFile, restoreVersion, versionDiff } from "./versions.js";
 import { createHash } from "node:crypto";
-import { createAccess, deleteAccess, listMembers, requireRole, roleFor, setMember, testHosted, testSubject, validTestSubject, type Role } from "./access.js";
+import { closeAccess, createAccess, deleteAccess, initAccess, listMembers, requireRole, roleFor, setMember, type Role } from "./access.js";
+import { identityProvider, subjectForRequest, testHosted, validTestSubject } from "./identity.js";
 import { closeProject, closeRevoked, flushProject, registerCollaboration, reloadAfterRestore, replaceFromRest } from "./collaboration.js";
 import { readOverrootLink, removeOverrootLink, setOverrootLink } from "./links.js";
 
@@ -33,7 +34,9 @@ if (process.env.OVERPOSTER_MODE === "hosted")
   throw new Error("Hosted mode needs a configured identity provider and isolated compile worker; startup is disabled until both are implemented.");
 if (testHosted && (process.env.NODE_ENV !== "test" || process.env.OVERPOSTER_TEST_IDENTITIES !== "1"))
   throw new Error("Test identities require an explicit test environment and must not be used for public hosting.");
+await initAccess();
 const app = Fastify({ logger: true, bodyLimit: 10_000_000 });
+app.addHook("onClose", async () => { closeAccess(); });
 const port = Number(process.env.PORT || 4318);
 const fileWrites = new Map<string, Promise<void>>();
 const etag = (bytes: Buffer) => `"${createHash("sha256").update(bytes).digest("hex")}"`;
@@ -61,7 +64,7 @@ app.addHook("onRequest", async (request, reply) => {
 app.addHook("preHandler", async (request) => {
   if (!testHosted || !request.url.startsWith("/api/")) return;
   if (request.url.startsWith("/api/health") || request.url.startsWith("/api/templates") || request.url.startsWith("/api/test-session")) return;
-  const subject = testSubject(request);
+  const subject = await subjectForRequest(request);
   const match = /^\/api\/projects\/([a-f0-9-]{36})(?:[/?]|$)/.exec(request.url);
   if (!match) return;
   let minimum: Role = request.method === "GET" || request.method === "HEAD" ? "viewer" : "editor";
@@ -82,7 +85,7 @@ app.setErrorHandler((error, request, reply) => {
     .send({ error: err.message });
 });
 app.get("/api/health", async () => ({ ok: true, version: "0.1.0" }));
-app.get("/api/session", async (request) => ({ mode: testHosted ? "test-hosted" : "local", subject: testSubject(request) }));
+app.get("/api/session", async (request) => ({ mode: identityProvider.mode, subject: await subjectForRequest(request) }));
 app.post("/api/test-session", async (request, reply) => {
   if (!testHosted) return reply.code(404).send({ error: "Not found" });
   const { subject } = z.object({ subject: z.string() }).parse(request.body);
@@ -94,7 +97,7 @@ app.get("/api/templates", async () => templateIds);
 app.get("/api/projects", async (request) => {
   const projects = await listProjects();
   if (!testHosted) return projects;
-  const subject = testSubject(request);
+  const subject = await subjectForRequest(request);
   const roles = await Promise.all(projects.map((project) => roleFor(project.id, subject)));
   return projects.filter((_, index) => roles[index] !== null);
 });
@@ -106,22 +109,22 @@ app.post("/api/projects", async (request) => {
     })
     .parse(request.body);
   const project = await createProject(body.name, body.config || {});
-  await createAccess(project.id, testSubject(request));
+  await createAccess(project.id, await subjectForRequest(request));
   return project;
 });
 app.post("/api/import", async (request) => {
   const file = await request.file();
   if (!file) throw new Error("Select a ZIP file");
   const project = await importZip(file.filename.replace(/\.zip$/i, ""), await file.toBuffer());
-  await createAccess(project.id, testSubject(request));
+  await createAccess(project.id, await subjectForRequest(request));
   return project;
 });
 app.get<{ Params: { id: string } }>("/api/projects/:id/members", async (request) => listMembers(request.params.id));
-app.get<{ Params: { id: string } }>("/api/projects/:id/role", async (request) => ({ role: await roleFor(request.params.id, testSubject(request)) }));
+app.get<{ Params: { id: string } }>("/api/projects/:id/role", async (request) => ({ role: await roleFor(request.params.id, await subjectForRequest(request)) }));
 app.get<{ Params: { id: string } }>("/api/projects/:id/overroot-link", async (request) => readOverrootLink(request.params.id));
 app.put<{ Params: { id: string } }>("/api/projects/:id/overroot-link", async (request) => {
   const input = z.object({ projectId: z.string(), url: z.string(), expectedVersion: z.string().nullable() }).parse(request.body);
-  return setOverrootLink(request.params.id, input, testSubject(request));
+  return setOverrootLink(request.params.id, input, await subjectForRequest(request));
 });
 app.delete<{ Params: { id: string } }>("/api/projects/:id/overroot-link", async (request) => {
   const { expectedVersion } = z.object({ expectedVersion: z.string().nullable() }).parse(request.body);
