@@ -17,3 +17,7 @@ The browser editor now uses Yjs in test mode, shows collaborator names and curso
 The planned account adapter needs a separate `overposter` grant, validated issuer and immutable subject, server-side sessions, state/PKCE where required, and CSRF protection. Membership remains project specific; every REST route, PDF/download route and WebSocket join/update must check it. Revocation must disconnect affected sockets.
 
 Hosted TeX needs a separate unprivileged VM or restricted Linux worker with no network, per-job mounts, CPU/RAM/time quotas, cancellation, limited concurrency, a secret-free environment, redacted logs, pinned source revision and authenticated artifact delivery. The web server must have no fallback to direct local XeLaTeX. This isolation and its adversarial tests are not yet implemented.
+
+## Manual cross-app reference
+
+An owner may record an Overroot project ID and HTTPS deep link in the Overposter project. The URL origin is restricted by `OVERPOSTER_OVERROOT_ORIGIN` (default `https://overroot.toni.foo`). A viewer may open the link with their own Overroot access; Overposter does not verify that access. The record includes the local actor and timestamp. Version checks reject stale edits to the reference. No remote request, membership transfer, source sync, or credential reuse occurs. The reference is outside the source ZIP and Git poster checkpoints; transfer still uses an explicit ZIP export/import and import trust review. A real authenticated link requires Toni's scoped project API and approval in both services.

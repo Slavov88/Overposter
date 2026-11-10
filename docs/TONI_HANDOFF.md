@@ -14,7 +14,7 @@ Overposter is a separate MIT-licensed poster application. Its current release is
 | Project membership and role enforcement | Implemented in test mode | Owner/editor/viewer checks cover project REST routes and WebSockets. An owner can assign exact simulated subjects in a browser sharing panel; real account lookup and invitations are absent. |
 | Shared editing and durable CRDT state | Implemented in test mode, partial product | Two browser editors converge through Yjs, show presence/cursors, and wait for persistence acknowledgment before navigation. Restart recovery is tested. Production session and cross-process semantics remain open. |
 | Isolated hosted TeX worker | Not implemented | Hosted startup and compilation fail closed. Native TeX in the web server is unsuitable for arbitrary hosted source. |
-| Overroot project links and scoped sync | Not implemented | Source ZIP import/export is the manual handoff. No automatic cross-app permission or sync exists. |
+| Overroot project links and scoped sync | Manual link implemented locally; sync unavailable | Owners can save a stable Overroot project ID and validated read-only URL; viewers can open it with separate Overroot access. Source ZIP is the manual handoff. No permission transfer or sync exists. |
 
 ## Proposed topology
 
@@ -34,6 +34,7 @@ Environment contract; production account and worker variables are **not yet impl
 | `OVERPOSTER_WEB_PORT` | Implemented: allowed local Vite origin port, default `5173`. |
 | `OVERPOSTER_DATA` | Implemented: project, build and version storage root. Back up the entire directory together. |
 | `OVERPOSTER_MODE` | `local` or unset works; `hosted` currently refuses startup. |
+| `OVERPOSTER_OVERROOT_ORIGIN` | Implemented, optional: HTTPS origin for validating manual Overroot deep links; defaults to `https://overroot.toni.foo`. No API calls or credentials are used. |
 | `OVERPOSTER_TEST_IDENTITIES` | Test harness only: `1` plus `NODE_ENV=test` and `OVERPOSTER_MODE=test-hosted`; never deploy. |
 | `OVERPOSTER_PUBLIC_ORIGIN` | Proposed: canonical HTTPS origin for redirects and CSRF checks. |
 | `OVERPOSTER_ACCOUNTS_ISSUER` | Proposed: provider issuer from Toni's contract. |
@@ -55,7 +56,7 @@ Do not set the proposed variables expecting them to enable hosted operation in t
 
 ## Cross-app link proposal
 
-The working exchange is source ZIP export/import with explicit local trust review. A future link should store stable Overroot and Overposter project IDs plus provenance and an explicit grant approved in **both** services. A read-only deep link is a safe first step. If Overroot exposes a scoped project API, negotiate a separate integration credential and revision-token contract; report conflicts and require an explicit user action to overwrite. Overroot changes, if any, should be proposals to Toni: register a distinct service and optional link endpoint or UI affordance. Do not change the Overroot repository or silently share memberships.
+The working exchange is source ZIP export/import with explicit local trust review. Overposter now stores a user-supplied Overroot project ID and read-only HTTPS deep link alongside the Overposter project. The UI shows who recorded the link and when, and states that the reference is unverified. It never fetches Overroot data or transfers permissions. The project ID in each service remains independent. For an authenticated link or sync, obtain an explicit grant approved in **both** services. If Overroot exposes a scoped project API, negotiate a separate integration credential and revision-token contract; report conflicts and require an explicit user action to overwrite. Overroot changes, if any, should be proposals to Toni: register a distinct service and optional link endpoint or UI affordance. Do not change the Overroot repository or silently share memberships.
 
 ## Paste-ready request
 
