@@ -100,6 +100,15 @@ describe("loopback collaborative test mode", () => {
     const put = (name: string, role: string) => api(`/api/projects/${projectId}/members/${name}`, "alice", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) });
     expect((await put("bob", "editor")).ok).toBe(true);
     expect((await put("carol", "viewer")).ok).toBe(true);
+    const linkPath = `/api/projects/${projectId}/overroot-link`;
+    const linked = await api(linkPath, "alice", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId: "research-42", url: "https://overroot.toni.foo/projects/research-42", expectedVersion: null }) });
+    expect(linked.ok).toBe(true);
+    const firstLink = await linked.json() as { version: string; link: { projectId: string; linkedBy: string } };
+    expect(firstLink.link).toMatchObject({ projectId: "research-42", linkedBy: "alice" });
+    expect((await (await api(linkPath, "carol")).json() as { version: string }).version).toBe(firstLink.version);
+    expect((await api(linkPath, "bob", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId: "other", url: "https://overroot.toni.foo/projects/other", expectedVersion: firstLink.version }) })).status).toBe(403);
+    expect((await api(linkPath, "alice", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId: "other", url: "https://evil.example/projects/other", expectedVersion: firstLink.version }) })).status).toBe(400);
+    expect((await api(linkPath, "alice", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: null }) })).status).toBe(409);
     expect((await api(`/api/projects/${projectId}/build`, "carol", { method: "POST" })).status).toBe(403);
     expect((await api(`/api/projects/${projectId}/versions`, "carol", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: "No" }) })).status).toBe(403);
     const blockedBuild = await (await api(`/api/projects/${projectId}/build`, "bob", { method: "POST" })).json() as { ok: boolean; log: string };
@@ -120,6 +129,12 @@ describe("loopback collaborative test mode", () => {
     expect(carol.doc.getText("source").toString()).toBe(merged);
     await until(async () => (await (await api(`/api/projects/${projectId}/file?path=sections/results.tex`, "alice")).text()) === merged);
     const sourcePath = `/api/projects/${projectId}/file?path=sections/results.tex`;
+    const figure = new FormData();
+    figure.append("file", new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" }), "plot.png");
+    expect((await api(`/api/projects/${projectId}/upload?path=poster.tex`, "bob", { method: "POST", body: figure })).status).toBe(400);
+    expect((await api(`/api/projects/${projectId}/upload?path=figures/plot.png`, "bob", { method: "POST", body: figure })).status).toBe(200);
+    expect((await api(`/api/projects/${projectId}/upload?path=figures/plot.png`, "bob", { method: "POST", body: figure })).status).toBe(409);
+    expect((await api(`/api/projects/${projectId}/upload?path=figures/../poster.tex`, "bob", { method: "POST", body: figure })).status).toBe(400);
     expect((await api(sourcePath, "bob", { method: "PUT", headers: { "Content-Type": "text/plain" }, body: "Overwrite" })).status).toBe(428);
     expect((await api(sourcePath, "bob", { method: "PUT", headers: { "Content-Type": "text/plain", "If-Match": originalEtag! }, body: "Overwrite" })).status).toBe(409);
     const after = await api(`/api/projects/${projectId}/versions`, "alice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: "After shared edits" }) });
@@ -140,6 +155,8 @@ describe("loopback collaborative test mode", () => {
     await start();
     const reopened = await connect("alice");
     expect(reopened.doc.getText("source").toString()).toBe(merged);
+    expect((await (await api(`/api/projects/${projectId}/overroot-link`, "alice")).json() as { version: string }).version).toBe(firstLink.version);
+    expect((await api(`/api/projects/${projectId}/overroot-link`, "alice", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: firstLink.version }) })).ok).toBe(true);
     reopened.socket.close();
     const history = await (await api(`/api/projects/${projectId}/versions`, "alice")).json() as { head: string };
     const restored = await api(`/api/projects/${projectId}/versions/${beforeId}/restore`, "alice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedHead: history.head }) });

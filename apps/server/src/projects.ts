@@ -164,6 +164,7 @@ export async function writeProjectFile(
   id: string,
   path: string,
   data: Buffer | string,
+  options: { createOnly?: boolean } = {},
 ): Promise<void> {
   await getProject(id);
   const base = filesDir(id);
@@ -184,7 +185,7 @@ export async function writeProjectFile(
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  await writeFile(full, data);
+  await writeFile(full, data, options.createOnly ? { flag: "wx" } : undefined);
 }
 export async function trustImportedProject(id: string): Promise<Project> {
   if (process.env.OVERPOSTER_MODE && process.env.OVERPOSTER_MODE !== "local")

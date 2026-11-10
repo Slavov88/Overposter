@@ -27,6 +27,7 @@ import { checkpoint, listVersions, readVersionFile, restoreVersion, versionDiff 
 import { createHash } from "node:crypto";
 import { createAccess, deleteAccess, listMembers, requireRole, roleFor, setMember, testHosted, testSubject, validTestSubject, type Role } from "./access.js";
 import { closeProject, closeRevoked, flushProject, registerCollaboration, reloadAfterRestore, replaceFromRest } from "./collaboration.js";
+import { readOverrootLink, removeOverrootLink, setOverrootLink } from "./links.js";
 
 if (process.env.OVERPOSTER_MODE === "hosted")
   throw new Error("Hosted mode needs a configured identity provider and isolated compile worker; startup is disabled until both are implemented.");
@@ -66,6 +67,7 @@ app.addHook("preHandler", async (request) => {
   let minimum: Role = request.method === "GET" || request.method === "HEAD" ? "viewer" : "editor";
   if (request.method === "DELETE" && /^\/api\/projects\/[^/]+(?:\?|$)/.test(request.url)) minimum = "owner";
   if (request.url.includes("/members")) minimum = "owner";
+  if (request.url.includes("/overroot-link") && request.method !== "GET") minimum = "owner";
   await requireRole(match[1], subject, minimum);
 });
 app.setErrorHandler((error, request, reply) => {
@@ -116,6 +118,15 @@ app.post("/api/import", async (request) => {
 });
 app.get<{ Params: { id: string } }>("/api/projects/:id/members", async (request) => listMembers(request.params.id));
 app.get<{ Params: { id: string } }>("/api/projects/:id/role", async (request) => ({ role: await roleFor(request.params.id, testSubject(request)) }));
+app.get<{ Params: { id: string } }>("/api/projects/:id/overroot-link", async (request) => readOverrootLink(request.params.id));
+app.put<{ Params: { id: string } }>("/api/projects/:id/overroot-link", async (request) => {
+  const input = z.object({ projectId: z.string(), url: z.string(), expectedVersion: z.string().nullable() }).parse(request.body);
+  return setOverrootLink(request.params.id, input, testSubject(request));
+});
+app.delete<{ Params: { id: string } }>("/api/projects/:id/overroot-link", async (request) => {
+  const { expectedVersion } = z.object({ expectedVersion: z.string().nullable() }).parse(request.body);
+  return removeOverrootLink(request.params.id, expectedVersion);
+});
 app.put<{ Params: { id: string; subject: string } }>("/api/projects/:id/members/:subject", async (request) => {
   const { role } = z.object({ role: z.enum(["editor", "viewer"]) }).parse(request.body);
   await setMember(request.params.id, request.params.subject, role);
@@ -208,15 +219,20 @@ app.put<{ Params: { id: string }; Querystring: { path: string } }>(
 );
 app.post<{ Params: { id: string }; Querystring: { path: string } }>(
   "/api/projects/:id/upload",
-  async (request) => {
+  async (request, reply) => {
+    const path = request.query.path;
+    if (!/^figures\/[^./\\\x00-\x1f][^/\\\x00-\x1f]*\.(pdf|png|jpe?g)$/i.test(path))
+      return reply.code(400).send({ error: "Figures must be PDF, PNG, or JPEG files in figures/" });
     const file = await request.file();
     if (!file) throw new Error("Select a file");
-    await writeProjectFile(
-      request.params.id,
-      request.query.path,
-      await file.toBuffer(),
-    );
-    return { ok: true };
+    try {
+      await writeProjectFile(request.params.id, path, await file.toBuffer(), { createOnly: true });
+      return { ok: true };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST")
+        return reply.code(409).send({ error: "A figure with this name already exists. Rename the upload first." });
+      throw error;
+    }
   },
 );
 app.post<{ Params: { id: string } }>(
