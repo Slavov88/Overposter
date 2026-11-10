@@ -858,3 +858,16 @@ body {
     grid-template-columns: 1fr;
   }
 }
+.share-panel { width: min(560px, calc(100vw - 32px)); max-height: 85vh; overflow: auto; padding: 28px; border-radius: 18px; background: var(--panel); color: var(--ink); box-shadow: 0 24px 70px #0004; }
+.share-heading { display: flex; justify-content: space-between; align-items: flex-start; }
+.share-heading h2 { margin: 0; }
+.share-heading button { font-size: 24px; }
+.member-list { list-style: none; padding: 0; margin: 20px 0; }
+.member-list li { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid #ccd3dc; }
+.member-list li span { margin-left: auto; text-transform: capitalize; }
+.share-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.share-form label { display: grid; gap: 6px; flex: 1 1 160px; }
+.share-form input, .share-form select { width: 100%; padding: 9px; }
+.share-error { color: #a0222d; }
+.online-peers { font-weight: 600; }
+.remote-cursor { display: inline-block; border-left: 2px solid #e05252; color: #fff; background: #a93444; padding: 0 3px; font: 10px/15px sans-serif; vertical-align: top; white-space: nowrap; }

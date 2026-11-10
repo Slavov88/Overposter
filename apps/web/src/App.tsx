@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import {
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
   Play,
   Plus,
   Settings2,
+  Users,
   Sun,
   Trash2,
   Upload,
@@ -21,6 +22,8 @@ import {
 import PdfPreview from "./PdfPreview";
 import PosterForm, { blankAuthor, blankAffiliation } from "./PosterForm";
 import VersionHistory from "./VersionHistory";
+import SharedEditor, { type SharedHandle, type SharedState } from "./SharedEditor";
+import SharePanel from "./SharePanel";
 import {
   api,
   fileUrl,
@@ -85,6 +88,10 @@ export default function App() {
     [showSettings, setShowSettings] = useState(false),
     [showLog, setShowLog] = useState(false),
     [showVersions, setShowVersions] = useState(false),
+    [showShare, setShowShare] = useState(false),
+    [session, setSession] = useState<{ mode: string; subject: string } | null>(null),
+    [projectRole, setProjectRole] = useState<"owner" | "editor" | "viewer">("owner"),
+    [sharedState, setSharedState] = useState<SharedState>("connecting"),
     [dark, setDark] = useState(
       localStorage.getItem("overposter-theme") === "dark",
     ),
@@ -99,13 +106,16 @@ export default function App() {
     requestId = useRef(0),
     fileInput = useRef<HTMLInputElement>(null),
     assetInput = useRef<HTMLInputElement>(null);
+  const sharedHandle = useRef<SharedHandle | null>(null);
+  const setSharedHandle = useCallback((handle: SharedHandle | null) => { sharedHandle.current = handle; }, []);
+  const updateSharedState = useCallback((state: SharedState) => { setSharedState(state); }, []);
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     localStorage.setItem("overposter-theme", dark ? "dark" : "light");
   }, [dark]);
   useEffect(() => {
-    api<Project[]>("/projects")
-      .then(setProjects)
+    Promise.all([api<{ mode: string; subject: string }>("/session"), api<Project[]>("/projects")])
+      .then(([currentSession, currentProjects]) => { setSession(currentSession); setProjects(currentProjects); })
       .catch((e) => setError(friendly(e)))
       .finally(() => setLoading(false));
   }, []);
@@ -116,14 +126,16 @@ export default function App() {
     await save();
     const request = ++requestId.current;
     setError("");
-    const [list, response] = await Promise.all([
+    const [list, response, role] = await Promise.all([
       api<string[]>(`/projects/${project.id}/files`),
       fetch(fileUrl(project.id, "poster.tex")),
+      session?.mode === "test-hosted" ? api<{ role: "owner" | "editor" | "viewer" }>(`/projects/${project.id}/role`) : Promise.resolve({ role: "owner" as const }),
     ]);
     if (!response.ok) throw new Error("Could not open poster source");
     const text = await response.text();
     if (request !== requestId.current) return;
     setActive(project);
+    setProjectRole(role.role);
     activeRef.current = project;
     setResult(null);
     setSelected("poster.tex");
@@ -133,7 +145,7 @@ export default function App() {
     setSaveState("clean");
     etagRef.current = response.headers.get("ETag");
     setFiles(list);
-    const recovered = localStorage.getItem(`overposter-draft:${project.id}:poster.tex`);
+    const recovered = session?.mode === "test-hosted" ? null : localStorage.getItem(`overposter-draft:${project.id}:poster.tex`);
     const restore = recovered !== null && recovered !== text && confirm("A locally saved draft is available for this poster. Restore it?");
     setContent(restore ? recovered! : text);
     contentRef.current = restore ? recovered! : text;
@@ -148,6 +160,13 @@ export default function App() {
     setPdfVersion((v) => v + 1);
   }
   async function save() {
+    if (session?.mode === "test-hosted") {
+      if (activeRef.current) {
+        if (!sharedHandle.current) throw new Error("Shared editor is still opening. Try again in a moment.");
+        await sharedHandle.current.flush();
+      }
+      return;
+    }
     const project = activeRef.current;
     if (!project) return;
     while (dirtyRef.current || saving.current) {
@@ -195,19 +214,20 @@ export default function App() {
   }
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
-      if (dirtyRef.current || saving.current) event.preventDefault();
+      if (dirtyRef.current || saving.current || (session?.mode === "test-hosted" && sharedState === "saving")) event.preventDefault();
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, []);
+  }, [session?.mode, sharedState]);
   useEffect(() => {
+    if (session?.mode === "test-hosted") return;
     if (!dirty) return;
     const timer = setTimeout(
       () => save().catch((e) => setError(friendly(e))),
       750,
     );
     return () => clearTimeout(timer);
-  }, [content, dirty]);
+  }, [content, dirty, session?.mode]);
   async function selectFile(path: string) {
     try {
       await save();
@@ -224,7 +244,7 @@ export default function App() {
       etagRef.current = response.headers.get("ETag");
       selectedRef.current = path;
       setSelected(path);
-      const recovered = localStorage.getItem(`overposter-draft:${project.id}:${path}`);
+    const recovered = session?.mode === "test-hosted" ? null : localStorage.getItem(`overposter-draft:${project.id}:${path}`);
       const restore = recovered !== null && recovered !== text && confirm("A locally saved draft is available for this file. Restore it?");
       contentRef.current = restore ? recovered! : text;
       setContent(restore ? recovered! : text);
@@ -329,6 +349,7 @@ export default function App() {
     )
       return;
     try {
+      await save();
       await api(`/projects/${active.id}`, { method: "DELETE" });
       setActive(null);
       activeRef.current = null;
@@ -533,9 +554,9 @@ export default function App() {
           <aside className="files-panel">
             <div className="panel-top">
               <span>SOURCE FILES</span>
-              <IconButton title="New file" onClick={addFile}>
+              {(session?.mode !== "test-hosted" || projectRole !== "viewer") && <IconButton title="New file" onClick={addFile}>
                 <FilePlus2 size={17} />
-              </IconButton>
+              </IconButton>}
             </div>
             <div className="file-list">
               {files
@@ -552,10 +573,10 @@ export default function App() {
                 ))}
             </div>
             <div className="file-footer">
-              <button onClick={() => assetInput.current?.click()}>
+              {(session?.mode !== "test-hosted" || projectRole !== "viewer") && <button onClick={() => assetInput.current?.click()}>
                 <Upload size={16} />
                 Upload figure
-              </button>
+              </button>}
               <input
                 ref={assetInput}
                 type="file"
@@ -566,7 +587,7 @@ export default function App() {
                   e.target.value = "";
                 }}
               />
-              <button
+              {(session?.mode !== "test-hosted" || projectRole !== "viewer") && <button
                 onClick={() => {
                   setDraft(active.config);
                   setShowSettings(true);
@@ -574,16 +595,17 @@ export default function App() {
               >
                 <Settings2 size={16} />
                 Poster settings
-              </button>
+              </button>}
               <button onClick={() => setShowVersions(true)}><History size={16} />Version history</button>
+              {session?.mode === "test-hosted" && projectRole === "owner" && <button onClick={() => setShowShare(true)}><Users size={16} />Share project</button>}
               <button onClick={() => save().then(() => { location.href = `/api/projects/${active.id}/export`; }).catch((e) => setError(friendly(e)))}>
                 <Download size={16} />
                 Export source ZIP
               </button>
-              <button className="danger" onClick={remove}>
+              {(session?.mode !== "test-hosted" || projectRole === "owner") && <button className="danger" onClick={remove}>
                 <Trash2 size={16} />
                 Delete project
-              </button>
+              </button>}
             </div>
           </aside>
           <section className="work-main">
@@ -598,10 +620,10 @@ export default function App() {
               </div>
               <div className="workspace-actions">
                 <span className={"save-state " + (dirty ? "unsaved" : "")}>
-                  {saveState === "clean" ? "Saved" : saveState === "dirty" ? "Unsaved changes" : saveState === "saving" ? "Saving…" : saveState === "conflict" ? "Save conflict — draft preserved" : "Save failed — retry"}
+                  {session?.mode === "test-hosted" ? sharedState === "saved" ? "Shared changes saved" : sharedState === "saving" ? "Saving shared changes…" : sharedState === "offline" ? "Disconnected — reconnecting" : sharedState === "denied" ? "Access changed — reopen project" : "Connecting to shared source…" : saveState === "clean" ? "Saved" : saveState === "dirty" ? "Unsaved changes" : saveState === "saving" ? "Saving…" : saveState === "conflict" ? "Save conflict — draft preserved" : "Save failed — retry"}
                 </span>
                 {(saveState === "error" || saveState === "conflict") && <button className="secondary" onClick={() => save().catch((e) => setError(friendly(e)))}>Retry save</button>}
-                <button
+                {(session?.mode !== "test-hosted" || projectRole !== "viewer") && <button
                   className="secondary"
                   onClick={() => {
                     setDraft(active.config);
@@ -610,15 +632,15 @@ export default function App() {
                 >
                   <Settings2 size={17} />
                   Configure
-                </button>
-                <button className="primary" disabled={busy} onClick={compile}>
+                </button>}
+                {(session?.mode !== "test-hosted" || projectRole !== "viewer") && <button className="primary" disabled={busy} onClick={compile}>
                   {busy ? (
                     <LoaderCircle className="spin" size={17} />
                   ) : (
                     <Play size={17} />
                   )}{" "}
                   {busy ? "Compiling…" : "Compile poster"}
-                </button>
+                </button>}
               </div>
             </div>
             <div className="work-split">
@@ -632,7 +654,7 @@ export default function App() {
                     Build log <ChevronDown size={14} />
                   </button>
                 </div>
-                <CodeMirror
+                {session?.mode === "test-hosted" ? <SharedEditor key={`${active.id}:${selected}`} projectId={active.id} path={selected} subject={session.subject} readOnly={projectRole === "viewer"} dark={dark} onState={updateSharedState} onHandle={setSharedHandle} /> : <><CodeMirror
                   value={content}
                   height="100%"
                   theme={dark ? "dark" : "light"}
@@ -651,6 +673,7 @@ export default function App() {
                 <div className="editor-status">
                   LaTeX source · edits save automatically
                 </div>
+                </>}
               </div>
               <PdfPreview
                 url={hasPdf ? pdfUrl(active.id) : null}
@@ -693,7 +716,8 @@ export default function App() {
       )}
       {showCreate && <PosterForm mode="create" value={draft} onChange={setDraft} name={name} onNameChange={setName} busy={busy} onSubmit={create} onClose={() => setShowCreate(false)} />}
       {showSettings && <PosterForm mode="settings" value={draft} onChange={setDraft} busy={busy} onSubmit={updateConfig} onClose={() => setShowSettings(false)} />}
-      {showVersions && active && <VersionHistory projectId={active.id} onClose={() => setShowVersions(false)} onBeforeAction={save} onRestored={async () => { const current = await api<Project>(`/projects/${active.id}`); setShowVersions(false); await open(current); }} />}
+      {showVersions && active && <VersionHistory projectId={active.id} readOnly={session?.mode === "test-hosted" && projectRole === "viewer"} onClose={() => setShowVersions(false)} onBeforeAction={save} onRestored={async () => { const current = await api<Project>(`/projects/${active.id}`); setShowVersions(false); await open(current); }} />}
+      {showShare && active && <SharePanel projectId={active.id} onClose={() => setShowShare(false)} />}
     </div>
   );
 }
