@@ -1,0 +1,8 @@
+# CI runner only. Ubuntu 24.04 mediates unprivileged user namespaces with AppArmor.
+# Grant namespace creation to bubblewrap itself; never disable the host policy globally.
+abi <abi/4.0>,
+include <tunables/global>
+
+profile overposter-ci-bwrap /usr/bin/bwrap flags=(unconfined) {
+  userns,
+}
